@@ -135,6 +135,83 @@ function hasWon(grid) {
 
 const CELL = 78;
 const GAP = 6;
+const BOARD_PX = SIZE * CELL + (SIZE - 1) * GAP;
+const MOVE_ANIM_MS = 260;
+const SWIPE_THRESHOLD = 24;
+
+function detectSwipe(start, end) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+  if (Math.max(absDx, absDy) < SWIPE_THRESHOLD) return null;
+  if (absDx > absDy) return dx > 0 ? "right" : "left";
+  return dy > 0 ? "down" : "up";
+}
+
+function getLineCoords(line, dir) {
+  if (dir === "left") return Array.from({ length: SIZE }, (_, i) => ({ r: line, c: i }));
+  if (dir === "right") return Array.from({ length: SIZE }, (_, i) => ({ r: line, c: SIZE - 1 - i }));
+  if (dir === "up") return Array.from({ length: SIZE }, (_, i) => ({ r: i, c: line }));
+  return Array.from({ length: SIZE }, (_, i) => ({ r: SIZE - 1 - i, c: line }));
+}
+
+function buildMovePlan(grid, dir) {
+  const nextGrid = emptyGrid();
+  const tiles = [];
+  let score = 0;
+  let moved = false;
+  let idSeed = 0;
+
+  for (let line = 0; line < SIZE; line++) {
+    const coords = getLineCoords(line, dir);
+    const nonZero = coords
+      .map(({ r, c }) => ({ r, c, value: grid[r][c] }))
+      .filter(t => t.value !== 0);
+
+    let i = 0;
+    let target = 0;
+    while (i < nonZero.length) {
+      const cur = nonZero[i];
+      const dst = coords[target];
+
+      if (i + 1 < nonZero.length && nonZero[i + 1].value === cur.value) {
+        const nxt = nonZero[i + 1];
+        const merged = cur.value * 2;
+        nextGrid[dst.r][dst.c] = merged;
+        score += merged;
+
+        const movedA = cur.r !== dst.r || cur.c !== dst.c;
+        const movedB = nxt.r !== dst.r || nxt.c !== dst.c;
+        moved = moved || movedA || movedB;
+
+        tiles.push({ id: idSeed++, value: cur.value, fromR: cur.r, fromC: cur.c, toR: dst.r, toC: dst.c, moving: movedA });
+        tiles.push({ id: idSeed++, value: nxt.value, fromR: nxt.r, fromC: nxt.c, toR: dst.r, toC: dst.c, moving: movedB });
+        i += 2;
+      } else {
+        nextGrid[dst.r][dst.c] = cur.value;
+        const isMoving = cur.r !== dst.r || cur.c !== dst.c;
+        moved = moved || isMoving;
+        tiles.push({ id: idSeed++, value: cur.value, fromR: cur.r, fromC: cur.c, toR: dst.r, toC: dst.c, moving: isMoving });
+        i += 1;
+      }
+      target += 1;
+    }
+  }
+
+  return { moved, score, nextGrid, tiles };
+}
+
+function tileFontSize(val) {
+  if (val >= 1024) return "1rem";
+  if (val >= 128) return "1.2rem";
+  return "1.5rem";
+}
+
+function tilePos(r, c) {
+  const step = CELL + GAP;
+  return { x: c * step, y: r * step };
+}
 
 function Game2048() {
   const [grid, setGrid] = useState(() => initGrid());
@@ -143,24 +220,44 @@ function Game2048() {
   const [gameOver, setGameOver] = useState(false);
   const [won, setWon] = useState(false);
   const [keepPlaying, setKeepPlaying] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animStarted, setAnimStarted] = useState(false);
+  const [animTiles, setAnimTiles] = useState([]);
   const touchRef = useRef(null);
+  const moveTimerRef = useRef(null);
 
   const [showHelp, setShowHelp] = useState(false);
 
   const doMove = useCallback((dir) => {
-    if (gameOver) return;
-    const { grid: newGrid, score: gained } = move(grid, dir);
-    if (gridsEqual(grid, newGrid)) return;
-    const g = addRandom(newGrid);
-    const newScore = score + gained;
-    setGrid(g);
-    setScore(newScore);
-    if (newScore > best) setBest(newScore);
-    if (!keepPlaying && hasWon(g) && !won) {
-      setWon(true);
-    }
-    if (!canMove(g)) setGameOver(true);
-  }, [grid, score, best, gameOver, won, keepPlaying]);
+    if (gameOver || isAnimating) return;
+    const plan = buildMovePlan(grid, dir);
+    if (!plan.moved) return;
+
+    setAnimTiles(plan.tiles);
+    setAnimStarted(false);
+    setIsAnimating(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setAnimStarted(true)));
+
+    if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
+    moveTimerRef.current = setTimeout(() => {
+      const g = addRandom(plan.nextGrid);
+      const newScore = score + plan.score;
+      setGrid(g);
+      setScore(newScore);
+      if (newScore > best) setBest(newScore);
+      if (!keepPlaying && hasWon(g) && !won) setWon(true);
+      if (!canMove(g)) setGameOver(true);
+      setIsAnimating(false);
+      setAnimStarted(false);
+      setAnimTiles([]);
+    }, MOVE_ANIM_MS);
+  }, [grid, score, best, gameOver, won, keepPlaying, isAnimating]);
+
+  useEffect(() => {
+    return () => {
+      if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const handler = (e) => {
@@ -173,24 +270,29 @@ function Game2048() {
 
   // Touch support
   const handleTouchStart = (e) => {
+    if (e.touches.length !== 1) return;
     const t = e.touches[0];
     touchRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const handleTouchMove = (e) => {
+    if (touchRef.current) e.preventDefault();
   };
   const handleTouchEnd = (e) => {
     if (!touchRef.current) return;
     const t = e.changedTouches[0];
-    const dx = t.clientX - touchRef.current.x;
-    const dy = t.clientY - touchRef.current.y;
-    const absDx = Math.abs(dx), absDy = Math.abs(dy);
-    if (Math.max(absDx, absDy) < 30) return;
-    if (absDx > absDy) doMove(dx > 0 ? "right" : "left");
-    else doMove(dy > 0 ? "down" : "up");
+    const dir = detectSwipe(touchRef.current, { x: t.clientX, y: t.clientY });
     touchRef.current = null;
+    if (dir) doMove(dir);
   };
+  const handleTouchCancel = () => { touchRef.current = null; };
 
   const resetGame = () => {
     setGrid(initGrid()); setScore(0); setGameOver(false);
     setWon(false); setKeepPlaying(false);
+    setIsAnimating(false);
+    setAnimStarted(false);
+    setAnimTiles([]);
+    if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
   };
 
   const maxTile = Math.max(...grid.flat());
@@ -315,30 +417,81 @@ function Game2048() {
         padding: `${GAP}px`,
         boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
         position: "relative",
+        touchAction: "none",
       }}>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${SIZE}, ${CELL}px)`,
-          gridTemplateRows: `repeat(${SIZE}, ${CELL}px)`,
-          gap: `${GAP}px`,
-        }}>
-          {grid.flat().map((val, i) => {
-            const s = getStyle(val);
-            return (
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
+          style={{ width: BOARD_PX, height: BOARD_PX, position: "relative" }}
+        >
+          <div style={{
+            position: "absolute", inset: 0,
+            display: "grid",
+            gridTemplateColumns: `repeat(${SIZE}, ${CELL}px)`,
+            gridTemplateRows: `repeat(${SIZE}, ${CELL}px)`,
+            gap: `${GAP}px`,
+          }}>
+            {Array.from({ length: SIZE * SIZE }).map((_, i) => (
               <div key={i} style={{
                 width: CELL, height: CELL, borderRadius: "10px",
-                background: val === 0 ? "#f1f5f9" : s.bg,
-                border: val === 0 ? "none" : `2px solid ${s.border}`,
+                background: "#f1f5f9",
+              }} />
+            ))}
+          </div>
+
+          {!isAnimating && grid.flat().map((val, i) => {
+            if (val === 0) return [];
+            const r = Math.floor(i / SIZE);
+            const c = i % SIZE;
+            const p = tilePos(r, c);
+            const s = getStyle(val);
+            return (
+              <div key={`tile-${r}-${c}-${val}`} style={{
+                position: "absolute",
+                left: p.x, top: p.y,
+                width: CELL, height: CELL, borderRadius: "10px",
+                background: s.bg,
+                border: `2px solid ${s.border}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: val >= 1024 ? "1rem" : val >= 128 ? "1.2rem" : "1.5rem",
-                fontWeight: 900, color: val === 0 ? "transparent" : s.color,
-                transition: "all 0.1s ease",
-                boxShadow: val > 0 ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
+                fontSize: tileFontSize(val), fontWeight: 900, color: s.color,
+                boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                animation: "tilePop 0.12s ease-out",
               }}>
-                {val > 0 ? val : ""}
+                {val}
               </div>
             );
           })}
+
+          {isAnimating && (
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+              {animTiles.map((tile) => {
+                const from = tilePos(tile.fromR, tile.fromC);
+                const to = tilePos(tile.toR, tile.toC);
+                const s = getStyle(tile.value);
+                return (
+                  <div key={`anim-${tile.id}`} style={{
+                    position: "absolute",
+                    left: from.x, top: from.y,
+                    width: CELL, height: CELL, borderRadius: "10px",
+                    background: s.bg,
+                    border: `2px solid ${s.border}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: tileFontSize(tile.value), fontWeight: 900, color: s.color,
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                    transition: `transform ${MOVE_ANIM_MS}ms cubic-bezier(0.22, 0.8, 0.2, 1)`,
+                    transform: (animStarted && tile.moving)
+                      ? `translate(${to.x - from.x}px, ${to.y - from.y}px)`
+                      : "translate(0px, 0px)",
+                    zIndex: tile.moving ? 2 : 1,
+                  }}>
+                    {tile.value}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Overlay */}
@@ -388,11 +541,26 @@ function Game2048() {
       }}>
         矢印キーまたはスワイプで操作
       </div>
+      <div style={{
+        marginTop: "8px",
+        padding: "8px 12px",
+        borderRadius: "10px",
+        border: "1px solid #e2e8f0",
+        background: "#f8fafc",
+        fontSize: "0.7rem",
+        color: "#64748b",
+        textAlign: "center",
+        lineHeight: 1.7,
+      }}>
+        例: <b style={{ color: "#334155" }}>2 + 2 = 4</b>（同じ数字だけ合体）<br />
+        1手ごとに <b style={{ color: "#334155" }}>2 / 4</b> が1つ追加されます
+      </div>
 
       <style>{`
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes modalIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes tilePop { from { transform: scale(0.93); } to { transform: scale(1); } }
       `}</style>
     </div>
   );
