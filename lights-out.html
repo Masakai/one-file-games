@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lights-out</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>html,body,#root{margin:0;min-height:100%;}body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f8fafc;}</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+    const { useState, useCallback, useEffect, useMemo, useRef } = React;
+
+const SIZES = [
+  { key: 3, label: "3×3" },
+  { key: 5, label: "5×5" },
+  { key: 7, label: "7×7" },
+];
+
+function generateBoard(size) {
+  // Start from solved, apply random toggles to guarantee solvability
+  const board = Array.from({ length: size }, () => Array(size).fill(false));
+  const presses = Math.max(size * 2, 8);
+  for (let i = 0; i < presses; i++) {
+    const r = Math.floor(Math.random() * size);
+    const c = Math.floor(Math.random() * size);
+    toggle(board, r, c, size);
+  }
+  // Ensure not already solved
+  if (board.every(row => row.every(c => !c))) {
+    toggle(board, 0, 0, size);
+    toggle(board, Math.floor(size / 2), Math.floor(size / 2), size);
+  }
+  return board;
+}
+
+function toggle(board, r, c, size) {
+  const dirs = [[0,0],[-1,0],[1,0],[0,-1],[0,1]];
+  for (const [dr, dc] of dirs) {
+    const nr = r + dr, nc = c + dc;
+    if (nr >= 0 && nr < size && nc >= 0 && nc < size)
+      board[nr][nc] = !board[nr][nc];
+  }
+}
+
+function cloneBoard(b) { return b.map(r => [...r]); }
+
+function isSolved(board) { return board.every(row => row.every(c => !c)); }
+
+function LightsOut() {
+  const [size, setSize] = useState(5);
+  const [board, setBoard] = useState(() => generateBoard(5));
+  const [moves, setMoves] = useState(0);
+  const [solved, setSolved] = useState(false);
+  const [lastPressed, setLastPressed] = useState(null);
+  const [bestMoves, setBestMoves] = useState({ 3: null, 5: null, 7: null });
+
+  const [showHelp, setShowHelp] = useState(false);
+
+  const handleClick = useCallback((r, c) => {
+    if (solved) return;
+    const b = cloneBoard(board);
+    toggle(b, r, c, size);
+    const newMoves = moves + 1;
+    setBoard(b);
+    setMoves(newMoves);
+    setLastPressed(`${r}-${c}`);
+    if (isSolved(b)) {
+      setSolved(true);
+      setBestMoves(prev => {
+        const cur = prev[size];
+        if (cur === null || newMoves < cur) return { ...prev, [size]: newMoves };
+        return prev;
+      });
+    }
+  }, [board, size, moves, solved]);
+
+  const resetGame = (newSize) => {
+    const s = newSize || size;
+    setSize(s);
+    setBoard(generateBoard(s));
+    setMoves(0);
+    setSolved(false);
+    setLastPressed(null);
+  };
+
+  const litCount = board.flat().filter(Boolean).length;
+  const cellSize = size <= 3 ? 72 : size <= 5 ? 58 : 44;
+
+  const HelpModal = () => {
+    if (!showHelp) return null;
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 200,
+        background: "rgba(0,0,0,0.3)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }} onClick={() => setShowHelp(false)}>
+        <div onClick={e => e.stopPropagation()} style={{
+          background: "#ffffff", borderRadius: "18px",
+          padding: "28px 32px", maxWidth: "380px", width: "90%",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
+        }}>
+          <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#1e293b", marginBottom: "14px" }}>
+            ライツアウトのルール
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.6 }}>
+            <span style={{ color: "#94a3b8", fontWeight: 700, flexShrink: 0 }}>1.</span>
+            <span>点灯（黄色）しているライトを全て消せばクリアです。</span>
+          </div>
+          <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.6 }}>
+            <span style={{ color: "#94a3b8", fontWeight: 700, flexShrink: 0 }}>2.</span>
+            <span>タイルをクリックすると、そのマスと上下左右（最大5マス）の点灯/消灯が反転します。</span>
+          </div>
+          <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.6 }}>
+            <span style={{ color: "#94a3b8", fontWeight: 700, flexShrink: 0 }}>3.</span>
+            <span>パズルは必ず解ける配置になっています。</span>
+          </div>
+          <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.6 }}>
+            <span style={{ color: "#94a3b8", fontWeight: 700, flexShrink: 0 }}>4.</span>
+            <span>サイズが大きいほど難しくなります。少ない手数でクリアを目指しましょう！</span>
+          </div>
+          </div>
+          <button onClick={() => setShowHelp(false)} style={{
+            marginTop: "18px", width: "100%", padding: "10px",
+            background: "#f1f5f9", color: "#475569",
+            border: "1px solid #e2e8f0", borderRadius: "10px",
+            fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+          }}>閉じる</button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{
+      minHeight: "100vh", background: "#ffffff",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      fontFamily: "'Nunito', 'Hiragino Sans', sans-serif",
+      color: "#1e293b", padding: "24px 16px", userSelect: "none",
+    }}>
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Fredoka+One&display=swap" rel="stylesheet" />
+
+      <HelpModal />            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+        <h1 style={{
+          fontFamily: "'Fredoka One', cursive",
+          fontSize: "1.8rem", letterSpacing: "0.06em", margin: 0, color: "#1e293b",
+        }}>💡 ライツアウト</h1>
+        <button onClick={() => setShowHelp(true)} style={{
+          width: "32px", height: "32px", borderRadius: "50%",
+          background: "#f1f5f9", color: "#64748b",
+          border: "1.5px solid #e2e8f0",
+          fontSize: "0.85rem", fontWeight: 800, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}>?</button>
+      </div>
+<div style={{ fontSize: "0.7rem", color: "#94a3b8", letterSpacing: "0.12em", marginBottom: "16px" }}>
+        全てのライトを消そう
+      </div>
+
+      {/* Size select */}
+      <div style={{ display: "flex", gap: "4px", marginBottom: "14px" }}>
+        {SIZES.map(s => (
+          <button key={s.key} onClick={() => resetGame(s.key)} style={{
+            padding: "5px 14px", borderRadius: "8px",
+            border: size === s.key ? "1.5px solid #1e293b" : "1.5px solid #e2e8f0",
+            background: size === s.key ? "#1e293b" : "#ffffff",
+            color: size === s.key ? "#ffffff" : "#64748b",
+            fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", transition: "all 0.15s",
+          }}>{s.label}</button>
+        ))}
+      </div>
+
+      {/* Stats */}
+      <div style={{
+        display: "flex", gap: "20px", alignItems: "center", marginBottom: "14px",
+        fontSize: "0.85rem", fontWeight: 700,
+      }}>
+        <div>手数: <span style={{ color: "#2563eb", fontFamily: "monospace" }}>{moves}</span></div>
+        <div>残り: <span style={{ color: litCount === 0 ? "#15803d" : "#dc2626", fontFamily: "monospace" }}>{litCount}</span></div>
+      </div>
+
+      {bestMoves[size] !== null && (
+        <div style={{ fontSize: "0.65rem", color: "#94a3b8", marginBottom: "10px", fontWeight: 600 }}>
+          🏆 ベスト: {bestMoves[size]}手
+        </div>
+      )}
+
+      {/* Board */}
+      <div style={{
+        background: "#f1f5f9", borderRadius: "16px", padding: "10px",
+        border: "1.5px solid #e2e8f0",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+      }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${size}, ${cellSize}px)`,
+          gap: "4px",
+        }}>
+          {board.map((row, r) =>
+            row.map((lit, c) => {
+              const isLast = lastPressed === `${r}-${c}`;
+              return (
+                <div key={`${r}-${c}`}
+                  onClick={() => handleClick(r, c)}
+                  style={{
+                    width: cellSize, height: cellSize,
+                    borderRadius: "10px",
+                    background: lit
+                      ? "linear-gradient(145deg, #fbbf24, #f59e0b)"
+                      : "#1e293b",
+                    border: lit ? "2px solid #f59e0b" : "2px solid #334155",
+                    cursor: solved ? "default" : "pointer",
+                    transition: "all 0.2s ease",
+                    boxShadow: lit
+                      ? "0 0 16px rgba(251,191,36,0.4), inset 0 1px 2px rgba(255,255,255,0.3)"
+                      : "inset 0 2px 4px rgba(0,0,0,0.3)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    animation: isLast ? "pressAnim 0.2s ease" : "none",
+                  }}
+                  onMouseEnter={e => {
+                    if (!solved) e.currentTarget.style.transform = "scale(0.95)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
+                >
+                  {lit && <div style={{
+                    width: "40%", height: "40%", borderRadius: "50%",
+                    background: "rgba(255,255,255,0.4)",
+                    filter: "blur(4px)",
+                  }} />}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Solved / Reset */}
+      {solved ? (
+        <div style={{ marginTop: "18px", textAlign: "center", animation: "fadeInUp 0.4s ease" }}>
+          <div style={{ fontSize: "1rem", fontWeight: 800, color: "#15803d", marginBottom: "10px" }}>
+            🎉 全消灯！ {moves}手
+          </div>
+          <button onClick={() => resetGame()} style={{
+            padding: "10px 32px", background: "#1e293b", color: "#fff",
+            border: "none", borderRadius: "10px",
+            fontWeight: 800, fontSize: "0.9rem", cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(30,41,59,0.15)",
+          }}>もう一局</button>
+        </div>
+      ) : (
+        <button onClick={() => resetGame()} style={{
+          marginTop: "16px", padding: "8px 24px",
+          background: "#f1f5f9", color: "#475569",
+          border: "1.5px solid #e2e8f0", borderRadius: "10px",
+          fontWeight: 700, fontSize: "0.8rem", cursor: "pointer",
+        }}>リセット</button>
+      )}
+
+      <div style={{
+        marginTop: "14px", fontSize: "0.7rem", color: "#94a3b8",
+        textAlign: "center", fontWeight: 600, lineHeight: 1.8,
+      }}>
+        タイルをクリックすると、そのマスと上下左右が反転します
+      </div>
+
+      <style>{`
+        @keyframes pressAnim { 0% { transform: scale(0.88); } 100% { transform: scale(1); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+      `}</style>
+    </div>
+  );
+}
+    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(LightsOut));
+  </script>
+</body>
+</html>

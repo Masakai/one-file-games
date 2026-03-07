@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>fifteen-puzzle</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>html,body,#root{margin:0;min-height:100%;}body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f8fafc;}</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+    const { useState, useCallback, useEffect, useMemo, useRef } = React;
+
+function isSolvable(tiles) {
+  // Count inversions (ignoring the blank=0)
+  let inv = 0;
+  const flat = tiles.filter(t => t !== 0);
+  for (let i = 0; i < flat.length; i++)
+    for (let j = i + 1; j < flat.length; j++)
+      if (flat[i] > flat[j]) inv++;
+  // Blank row from bottom (1-indexed)
+  const blankIdx = tiles.indexOf(0);
+  const blankRowFromBottom = 4 - Math.floor(blankIdx / 4);
+  // Solvable if: (even grid) inversions + blankRowFromBottom is odd
+  return (inv + blankRowFromBottom) % 2 === 1;
+}
+
+function shuffle() {
+  let tiles;
+  do {
+    tiles = [...Array(16).keys()]; // 0-15, 0=blank
+    for (let i = tiles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+    }
+  } while (!isSolvable(tiles) || isSolved(tiles));
+  return tiles;
+}
+
+function isSolved(tiles) {
+  for (let i = 0; i < 15; i++) {
+    if (tiles[i] !== i + 1) return false;
+  }
+  return tiles[15] === 0;
+}
+
+function getMovable(tiles) {
+  const blankIdx = tiles.indexOf(0);
+  const br = Math.floor(blankIdx / 4), bc = blankIdx % 4;
+  const movable = [];
+  for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+    const nr = br + dr, nc = bc + dc;
+    if (nr >= 0 && nr < 4 && nc >= 0 && nc < 4) movable.push(nr * 4 + nc);
+  }
+  return movable;
+}
+
+const TILE_COLORS = [
+  null,
+  "#dc2626","#dc2626","#dc2626","#dc2626", // 1-4 red row
+  "#2563eb","#2563eb","#2563eb","#2563eb", // 5-8 blue row
+  "#16a34a","#16a34a","#16a34a","#16a34a", // 9-12 green row
+  "#ca8a04","#ca8a04","#ca8a04",           // 13-15 yellow row
+];
+const TILE_BG = [
+  null,
+  "#fef2f2","#fef2f2","#fef2f2","#fef2f2",
+  "#eff6ff","#eff6ff","#eff6ff","#eff6ff",
+  "#f0fdf4","#f0fdf4","#f0fdf4","#f0fdf4",
+  "#fefce8","#fefce8","#fefce8",
+];
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+const CELL = 80;
+const GAP = 4;
+
+function FifteenPuzzle() {
+  const [tiles, setTiles] = useState(() => shuffle());
+  const [moves, setMoves] = useState(0);
+  const [time, setTime] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [solved, setSolved] = useState(false);
+  const [bestRecord, setBestRecord] = useState(null); // { moves, time }
+  const [lastMoved, setLastMoved] = useState(null);
+  const timerRef = useRef(null);
+
+  const [showHelp, setShowHelp] = useState(false);
+
+  useEffect(() => {
+    if (playing && !solved) {
+      timerRef.current = setInterval(() => setTime(t => t + 1), 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [playing, solved]);
+
+  useEffect(() => {
+    if (playing && isSolved(tiles)) {
+      setSolved(true);
+      setBestRecord(prev => {
+        if (!prev || moves < prev.moves || (moves === prev.moves && time < prev.time))
+          return { moves, time };
+        return prev;
+      });
+    }
+  }, [tiles, playing, moves, time]);
+
+  const handleClick = useCallback((idx) => {
+    if (solved) return;
+    const blankIdx = tiles.indexOf(0);
+    const movable = getMovable(tiles);
+    if (!movable.includes(idx)) return;
+
+    if (!playing) setPlaying(true);
+
+    const newTiles = [...tiles];
+    [newTiles[blankIdx], newTiles[idx]] = [newTiles[idx], newTiles[blankIdx]];
+    setTiles(newTiles);
+    setMoves(m => m + 1);
+    setLastMoved(tiles[idx]);
+  }, [tiles, solved, playing]);
+
+  const resetGame = () => {
+    setTiles(shuffle());
+    setMoves(0);
+    setTime(0);
+    setPlaying(false);
+    setSolved(false);
+    setLastMoved(null);
+  };
+
+  const movable = getMovable(tiles);
+
+  // Compute how many are in correct position
+  const correctCount = tiles.filter((t, i) => {
+    if (t === 0) return false;
+    return t === i + 1;
+  }).length;
+
+  const HelpModal = () => {
+    if (!showHelp) return null;
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 200,
+        background: "rgba(0,0,0,0.3)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }} onClick={() => setShowHelp(false)}>
+        <div onClick={e => e.stopPropagation()} style={{
+          background: "#ffffff", borderRadius: "18px",
+          padding: "28px 32px", maxWidth: "380px", width: "90%",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
+        }}>
+          <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#1e293b", marginBottom: "14px" }}>
+            15パズルのルール
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.6 }}>
+            <span style={{ color: "#94a3b8", fontWeight: 700, flexShrink: 0 }}>1.</span>
+            <span>4×4の枠に1〜15の数字タイルがランダムに並んでいます。1マスだけ空いています。</span>
+          </div>
+          <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.6 }}>
+            <span style={{ color: "#94a3b8", fontWeight: 700, flexShrink: 0 }}>2.</span>
+            <span>空きマスに隣接するタイルをクリックするとスライドできます。</span>
+          </div>
+          <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.6 }}>
+            <span style={{ color: "#94a3b8", fontWeight: 700, flexShrink: 0 }}>3.</span>
+            <span>左上から右へ1, 2, 3…と順番に並べ、右下を空きマスにすれば完成です。</span>
+          </div>
+          <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.6 }}>
+            <span style={{ color: "#94a3b8", fontWeight: 700, flexShrink: 0 }}>4.</span>
+            <span>正しい位置に入ったタイルには緑の印が付きます。</span>
+          </div>
+          <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem", color: "#475569", lineHeight: 1.6 }}>
+            <span style={{ color: "#94a3b8", fontWeight: 700, flexShrink: 0 }}>5.</span>
+            <span>手数と時間が記録されるので、最短クリアを目指しましょう！</span>
+          </div>
+          </div>
+          <button onClick={() => setShowHelp(false)} style={{
+            marginTop: "18px", width: "100%", padding: "10px",
+            background: "#f1f5f9", color: "#475569",
+            border: "1px solid #e2e8f0", borderRadius: "10px",
+            fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+          }}>閉じる</button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{
+      minHeight: "100vh", background: "#ffffff",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      fontFamily: "'Nunito', 'Hiragino Sans', sans-serif",
+      color: "#1e293b", padding: "24px 16px", userSelect: "none",
+    }}>
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Fredoka+One&display=swap" rel="stylesheet" />
+
+      <HelpModal />            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+        <h1 style={{
+          fontFamily: "'Fredoka One', cursive",
+          fontSize: "1.8rem", letterSpacing: "0.06em", margin: 0, color: "#1e293b",
+        }}>15パズル</h1>
+        <button onClick={() => setShowHelp(true)} style={{
+          width: "32px", height: "32px", borderRadius: "50%",
+          background: "#f1f5f9", color: "#64748b",
+          border: "1.5px solid #e2e8f0",
+          fontSize: "0.85rem", fontWeight: 800, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}>?</button>
+      </div>
+<div style={{
+        fontSize: "0.7rem", color: "#94a3b8",
+        letterSpacing: "0.12em", marginBottom: "16px",
+      }}>スライドして1〜15に並べよう</div>
+
+      {/* Stats */}
+      <div style={{
+        display: "flex", gap: "16px", alignItems: "center",
+        marginBottom: "14px",
+        padding: "8px 20px",
+        background: "#f8fafc", borderRadius: "12px",
+        border: "1px solid #e2e8f0",
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 600 }}>手数</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#1e293b", fontFamily: "monospace" }}>{moves}</div>
+        </div>
+        <div style={{ width: "1px", height: "28px", background: "#e2e8f0" }} />
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 600 }}>時間</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#2563eb", fontFamily: "monospace" }}>{formatTime(time)}</div>
+        </div>
+        <div style={{ width: "1px", height: "28px", background: "#e2e8f0" }} />
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 600 }}>正位置</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 900, color: correctCount === 15 ? "#15803d" : "#64748b", fontFamily: "monospace" }}>{correctCount}<span style={{ fontSize: "0.7rem", fontWeight: 400 }}>/15</span></div>
+        </div>
+      </div>
+
+      {bestRecord && (
+        <div style={{ fontSize: "0.65rem", color: "#94a3b8", marginBottom: "10px", fontWeight: 600 }}>
+          🏆 ベスト: {bestRecord.moves}手 / {formatTime(bestRecord.time)}
+        </div>
+      )}
+
+      {/* Board */}
+      <div style={{
+        width: CELL * 4 + GAP * 3 + 16,
+        height: CELL * 4 + GAP * 3 + 16,
+        background: "#f1f5f9",
+        borderRadius: "16px",
+        padding: "8px",
+        border: "1.5px solid #e2e8f0",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+        position: "relative",
+      }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(4, ${CELL}px)`,
+          gridTemplateRows: `repeat(4, ${CELL}px)`,
+          gap: `${GAP}px`,
+        }}>
+          {tiles.map((tile, idx) => {
+            if (tile === 0) {
+              return <div key={idx} style={{
+                width: CELL, height: CELL, borderRadius: "12px",
+                background: "#e8ecf1",
+              }} />;
+            }
+            const isCorrect = tile === idx + 1;
+            const isMovable = movable.includes(idx);
+            const wasLastMoved = lastMoved === tile;
+            const color = TILE_COLORS[tile];
+            const bg = TILE_BG[tile];
+
+            return (
+              <div key={idx}
+                onClick={() => handleClick(idx)}
+                style={{
+                  width: CELL, height: CELL,
+                  borderRadius: "12px",
+                  background: isCorrect && solved ? "#dcfce7" : bg,
+                  border: isCorrect && !solved ? `2px solid ${color}40` : isMovable ? "2px solid #94a3b8" : "2px solid #e2e8f0",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: isMovable && !solved ? "pointer" : "default",
+                  transition: "all 0.15s ease",
+                  boxShadow: isMovable && !solved ? "0 2px 8px rgba(0,0,0,0.08)" : "0 1px 3px rgba(0,0,0,0.04)",
+                  position: "relative",
+                  animation: wasLastMoved ? "tileSlide 0.15s ease" : "none",
+                }}
+                onMouseEnter={e => {
+                  if (isMovable && !solved) {
+                    e.currentTarget.style.transform = "scale(1.04)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.12)";
+                  }
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow = isMovable ? "0 2px 8px rgba(0,0,0,0.08)" : "0 1px 3px rgba(0,0,0,0.04)";
+                }}
+              >
+                <span style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 900,
+                  color: color,
+                  lineHeight: 1,
+                }}>{tile}</span>
+                {isCorrect && !solved && (
+                  <div style={{
+                    position: "absolute", top: "4px", right: "6px",
+                    width: "6px", height: "6px", borderRadius: "50%",
+                    background: "#16a34a",
+                  }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Solved message */}
+      {solved && (
+        <div style={{
+          marginTop: "18px", textAlign: "center",
+          animation: "fadeInUp 0.4s ease",
+        }}>
+          <div style={{
+            fontSize: "1rem", fontWeight: 800, color: "#15803d",
+            marginBottom: "4px",
+          }}>🎉 パズル完成！</div>
+          <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "14px" }}>
+            {moves}手 / {formatTime(time)}
+          </div>
+          <button onClick={resetGame} style={{
+            padding: "10px 32px",
+            background: "#1e293b", color: "#ffffff",
+            border: "none", borderRadius: "10px",
+            fontFamily: "'Nunito', sans-serif",
+            fontWeight: 800, fontSize: "0.9rem", cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(30,41,59,0.15)",
+          }}>もう一局</button>
+        </div>
+      )}
+
+      {!solved && (
+        <button onClick={resetGame} style={{
+          marginTop: "16px",
+          padding: "8px 24px",
+          background: "#f1f5f9", color: "#475569",
+          border: "1.5px solid #e2e8f0", borderRadius: "10px",
+          fontFamily: "'Nunito', sans-serif",
+          fontWeight: 700, fontSize: "0.8rem", cursor: "pointer",
+        }}>シャッフル</button>
+      )}
+
+      {/* Help */}
+      <div style={{
+        marginTop: "14px", fontSize: "0.7rem", color: "#94a3b8",
+        textAlign: "center", fontWeight: 600, lineHeight: 1.8,
+      }}>
+        動かせるタイルをクリックしてスライド ／ 正しい位置のタイルには緑の印が付きます
+      </div>
+
+      <style>{`
+        @keyframes tileSlide {
+          from { transform: scale(0.92); }
+          to { transform: scale(1); }
+        }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+      `}</style>
+    </div>
+  );
+}
+    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(FifteenPuzzle));
+  </script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ゲーム一覧</title>
+  <style>
+    :root {
+      --bg1: #f8fafc;
+      --bg2: #eef2ff;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --line: #e2e8f0;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+      background:
+        radial-gradient(circle at 10% 10%, #dbeafe 0, transparent 30%),
+        radial-gradient(circle at 90% 0%, #e9d5ff 0, transparent 35%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 20px 56px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.5rem, 3vw, 2.1rem);
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .grid {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: #bae6fd;
+      box-shadow: 0 12px 28px rgba(14, 165, 233, 0.14);
+    }
+
+    .title {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .thumb {
+      position: relative;
+      height: 140px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #f8fafc;
+      margin-bottom: 10px;
+    }
+
+    .thumb-frame {
+      width: 1200px;
+      height: 900px;
+      border: 0;
+      transform: scale(0.19);
+      transform-origin: 0 0;
+      pointer-events: none;
+      background: #fff;
+    }
+
+    .thumb::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.0) 38%);
+      pointer-events: none;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .open {
+      appearance: none;
+      display: inline-block;
+      text-decoration: none;
+      border: 0;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      transition: background .14s ease;
+    }
+
+    .open:hover {
+      background: var(--accent-hover);
+    }
+
+    .foot {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>ゲーム一覧</h1>
+    <p>各HTMLを直接開いてプレイできます。</p>
+
+    <ul class="grid">
+      <li class="card">
+        <h2 class="title">2048</h2>
+        <div class="thumb"><iframe class="thumb-frame" src="./game-2048.html" loading="lazy" title="game-2048 preview"></iframe></div>
+        <div class="actions"><a class="open" href="./game-2048.html">開く</a></div>
+      </li>
+      <li class="card">
+        <h2 class="title">オセロ</h2>
+        <div class="thumb"><iframe class="thumb-frame" src="./othello.html" loading="lazy" title="othello preview"></iframe></div>
+        <div class="actions"><a class="open" href="./othello.html">開く</a></div>
+      </li>
+      <li class="card">
+        <h2 class="title">ハノイの塔</h2>
+        <div class="thumb"><iframe class="thumb-frame" src="./hanoi.html" loading="lazy" title="hanoi preview"></iframe></div>
+        <div class="actions"><a class="open" href="./hanoi.html">開く</a></div>
+      </li>
+      <li class="card">
+        <h2 class="title">15パズル</h2>
+        <div class="thumb"><iframe class="thumb-frame" src="./fifteen-puzzle.html" loading="lazy" title="fifteen-puzzle preview"></iframe></div>
+        <div class="actions"><a class="open" href="./fifteen-puzzle.html">開く</a></div>
+      </li>
+      <li class="card">
+        <h2 class="title">四目並べ</h2>
+        <div class="thumb"><iframe class="thumb-frame" src="./connect-four.html" loading="lazy" title="connect-four preview"></iframe></div>
+        <div class="actions"><a class="open" href="./connect-four.html">開く</a></div>
+      </li>
+      <li class="card">
+        <h2 class="title">三目並べ</h2>
+        <div class="thumb"><iframe class="thumb-frame" src="./tic-tac-toe.html" loading="lazy" title="tic-tac-toe preview"></iframe></div>
+        <div class="actions"><a class="open" href="./tic-tac-toe.html">開く</a></div>
+      </li>
+      <li class="card">
+        <h2 class="title">マインスイーパー</h2>
+        <div class="thumb"><iframe class="thumb-frame" src="./minesweeper.html" loading="lazy" title="minesweeper preview"></iframe></div>
+        <div class="actions"><a class="open" href="./minesweeper.html">開く</a></div>
+      </li>
+      <li class="card">
+        <h2 class="title">Hit & Blow</h2>
+        <div class="thumb"><iframe class="thumb-frame" src="./hit-and-blow.html" loading="lazy" title="hit-and-blow preview"></iframe></div>
+        <div class="actions"><a class="open" href="./hit-and-blow.html">開く</a></div>
+      </li>
+      <li class="card">
+        <h2 class="title">ライツアウト</h2>
+        <div class="thumb"><iframe class="thumb-frame" src="./lights-out.html" loading="lazy" title="lights-out preview"></iframe></div>
+        <div class="actions"><a class="open" href="./lights-out.html">開く</a></div>
+      </li>
+    </ul>
+
+    <div class="foot">このファイル: index.html</div>
+  </main>
+</body>
+</html>
