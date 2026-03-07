@@ -85,6 +85,15 @@ export default function HitAndBlow() {
         <h1 style={{ fontFamily:"'Fredoka One',cursive", fontSize:"1.8rem", letterSpacing:"0.08em", margin:0, color:"#1e293b" }}>♟ Hit & Blow ♟</h1>
         <button onClick={()=>setShowRules(true)} style={{ width:"28px",height:"28px",borderRadius:"50%",border:"1.5px solid #d1d5db",background:"#f8fafc",color:"#64748b",fontSize:"0.8rem",fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>?</button>
       </div>
+
+      <a href="./index.html" style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        padding: "6px 12px", marginBottom: "12px",
+        borderRadius: "999px", border: "1.5px solid #cbd5e1",
+        background: "#ffffff", color: "#334155",
+        textDecoration: "none", fontSize: "0.72rem", fontWeight: 800,
+        letterSpacing: "0.04em",
+      }}>← ゲーム一覧へ</a>
       <div style={{ fontSize:"0.72rem", color:"#64748b", letterSpacing:"0.12em", marginBottom:"14px" }}>6色から4つ選んで暗号を解読せよ</div>
 
       <div style={{ display:"flex", gap:"4px", marginBottom:"14px" }}>
