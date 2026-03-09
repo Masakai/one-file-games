@@ -685,6 +685,7 @@ export default function SuperStarTrek() {
             <div style={panelStyle}>
               <label style={labelStyle}>NAV COURSE (1-8)</label>
               <input style={inputStyle} value={navCourse} onChange={(e) => setNavCourse(e.target.value)} />
+              {navCourse.trim() !== "" && <div style={courseInlineStyle}>1→ 2↗ 3↑ 4↖ 5← 6↙ 7↓ 8↘</div>}
               <label style={labelStyle}>WARP (0-8)</label>
               <input style={inputStyle} value={navWarp} onChange={(e) => setNavWarp(e.target.value)} />
               <button style={btnStyle} onClick={cmdNav} disabled={state.gameOver}>NAV 実行</button>
@@ -699,6 +700,7 @@ export default function SuperStarTrek() {
             <div style={panelStyle}>
               <label style={labelStyle}>TOR COURSE (1-8)</label>
               <input style={inputStyle} value={torCourse} onChange={(e) => setTorCourse(e.target.value)} />
+              {torCourse.trim() !== "" && <div style={courseInlineStyle}>1→ 2↗ 3↑ 4↖ 5← 6↙ 7↓ 8↘</div>}
               <button style={btnStyle} onClick={cmdTorpedo} disabled={state.gameOver}>TOR 実行</button>
             </div>
 
@@ -772,4 +774,10 @@ const inputStyle = {
   padding: "6px",
   fontFamily: "inherit",
   fontSize: "0.78rem",
+};
+
+const courseInlineStyle = {
+  fontSize: "0.66rem",
+  color: "#7dd3fc",
+  lineHeight: 1.3,
 };
