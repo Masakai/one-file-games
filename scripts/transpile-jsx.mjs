@@ -43,14 +43,17 @@ const { build } = require(esbuildMainPath);
 
 const games = [
   "connect-four",
+  "core-war",
   "fifteen-puzzle",
   "game-2048",
   "hanoi",
   "hit-and-blow",
   "lights-out",
+  "lunar-lander",
   "minesweeper",
   "othello",
   "rogue",
+  "sokoban",
   "super-startrek",
   "tic-tac-toe",
 ];
