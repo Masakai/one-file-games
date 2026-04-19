@@ -1,5 +1,19 @@
 # Changelog
 
+## [v1.2.0] - 2026-04-19
+
+### Added
+- `lunar-lander.html` / `lunar-lander.jsx` / `lunar-lander.js` を追加し、月面着陸ゲームをピクセルアート風表示で遊べるようにした。
+- `core-war.html` / `core-war.jsx` / `core-war.js` を追加し、Redcode 風のコアメモリ対戦を可視化した。
+- `sokoban.html` / `sokoban.jsx` / `sokoban.js` を追加し、ドット絵表示の倉庫番パズルを実装した。
+- `README.md` を追加し、プロジェクト概要、遊び方、収録ゲーム、開発手順を整理した。
+- `index.html` の先頭に、70年代のレトロなコンピュータゲームを懐かしむヒーローセクションを追加した。
+- `index.html` のフッタに著作権表示を追加した。
+
+### Changed
+- `scripts/transpile-jsx.mjs` の変換対象に `lunar-lander`、`core-war`、`sokoban` を追加。
+- `index.html` に Lunar Lander、Core War、Sokoban への導線を追加。
+
 ## [v1.1.0] - 2026-04-19
 
 ### Added
@@ -38,4 +52,5 @@
 ### Changed
 - Super Star Trek のUIをプレイしやすいレイアウトへ調整（COMMAND/COMPUTER/GUIDE 構成）。
 
+[v1.2.0]: https://github.com/Masakai/one-file-games/compare/v1.1.0...v1.2.0
 [v1.1.0]: https://github.com/Masakai/one-file-games/compare/v1.0.2...v1.1.0
