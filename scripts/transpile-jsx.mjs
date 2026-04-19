@@ -50,6 +50,7 @@ const games = [
   "lights-out",
   "minesweeper",
   "othello",
+  "rogue",
   "super-startrek",
   "tic-tac-toe",
 ];

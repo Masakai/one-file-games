@@ -1,5 +1,16 @@
 # Changelog
 
+## [v1.1.0] - 2026-04-19
+
+### Added
+- `rogue.html` / `rogue.jsx` / `rogue.js` を追加し、Rogue 風のASCIIダンジョン探索ゲームをブラウザで遊べるようにした。
+- ランダム生成される部屋・通路・階段、モンスター、金貨・食料・薬・巻物・武器・鎧・魔除け、HP・経験値・スコアを実装。
+- `index.html` に Rogue への導線を追加。
+- Rogue の画面内にキー説明パネルを追加し、主要操作を常時確認できるようにした。
+
+### Changed
+- `scripts/transpile-jsx.mjs` の変換対象に `rogue` を追加。
+
 ## v1.0.2 - 2026-03-09
 
 ### Changed
@@ -26,3 +37,5 @@
 
 ### Changed
 - Super Star Trek のUIをプレイしやすいレイアウトへ調整（COMMAND/COMPUTER/GUIDE 構成）。
+
+[v1.1.0]: https://github.com/Masakai/one-file-games/compare/v1.0.2...v1.1.0
