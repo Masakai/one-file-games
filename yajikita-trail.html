@@ -1,0 +1,1627 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>弥次喜多トレイル</title>
+  <style>
+    :root {
+      --bg: #f5efe0;
+      --panel: rgba(255, 252, 244, 0.92);
+      --line: rgba(100, 72, 30, 0.18);
+      --text: #2a1f0e;
+      --muted: #7a6245;
+      --accent: #8b3a0f;
+      --accent2: #1a6b3a;
+      --danger: #991b1b;
+      --warn: #92400e;
+      --ink: #1a1208;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(210, 165, 90, 0.35), transparent 40%),
+        radial-gradient(circle at 85% 90%, rgba(160, 120, 60, 0.25), transparent 40%),
+        linear-gradient(160deg, #f7eedb, #e8dcc5);
+      color: var(--text);
+      font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ===== Layout ===== */
+    #app {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ===== Header ===== */
+    .game-header {
+      text-align: center;
+      padding: 28px 20px 20px;
+      background:
+        linear-gradient(rgba(30, 16, 4, 0.86), rgba(20, 10, 2, 0.90)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 12px);
+      border-radius: 12px;
+      border: 1px solid #5a3a10;
+      color: #f5e8c8;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .game-header::before {
+      content: "＊東海道中膝栗毛＊";
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.72rem;
+      letter-spacing: 0.22em;
+      color: rgba(210, 175, 100, 0.55);
+      white-space: nowrap;
+    }
+
+    .game-header h1 {
+      font-size: clamp(1.6rem, 5vw, 2.6rem);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      color: #f5e8c8;
+      text-shadow: 0 0 20px rgba(200, 140, 50, 0.4);
+      margin-bottom: 6px;
+    }
+
+    .game-header p {
+      color: rgba(220, 195, 140, 0.85);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* ===== Route bar ===== */
+    .route-section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 18px rgba(100, 72, 30, 0.08);
+    }
+
+    .route-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+
+    /* ===== 国ブロック式ルートバー ===== */
+    .route-regions {
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .route-regions::-webkit-scrollbar { height: 4px; }
+    .route-regions::-webkit-scrollbar-track { background: transparent; }
+    .route-regions::-webkit-scrollbar-thumb { background: rgba(100,72,30,0.3); border-radius: 4px; }
+
+    .region-block {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      flex-shrink: 0;
+      border: 1.5px solid rgba(100,72,30,0.15);
+      border-radius: 8px;
+      padding: 6px 8px 5px;
+      background: rgba(255,252,244,0.5);
+      min-width: 0;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .region-block.has-visited {
+      border-color: rgba(26,107,58,0.35);
+      background: rgba(220,245,230,0.35);
+    }
+
+    .region-block.has-current {
+      border-color: var(--accent);
+      background: rgba(255,240,220,0.7);
+      box-shadow: 0 0 0 2px rgba(139,58,15,0.12);
+    }
+
+    .region-name {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      margin-bottom: 5px;
+      white-space: nowrap;
+    }
+
+    .region-block.has-current .region-name {
+      color: var(--accent);
+    }
+
+    .region-block.has-visited:not(.has-current) .region-name {
+      color: var(--accent2);
+    }
+
+    .region-dots {
+      display: flex;
+      align-items: flex-start;
+      gap: 3px;
+    }
+
+    .station-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .station-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(100,72,30,0.15);
+      border: 1.5px solid rgba(100,72,30,0.2);
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .station-dot.visited {
+      background: var(--accent2);
+      border-color: var(--accent2);
+    }
+
+    .station-dot.current {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(139,58,15,0.3);
+      width: 11px;
+      height: 11px;
+    }
+
+    .station-label {
+      font-size: 0.58rem;
+      color: var(--muted);
+      white-space: nowrap;
+      line-height: 1;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+
+    .station-cell.visited .station-label {
+      color: var(--accent2);
+    }
+
+    .station-cell.current .station-label {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ===== Stats ===== */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 4px 14px rgba(100, 72, 30, 0.07);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-icon {
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .stat-value.low { color: var(--danger); }
+    .stat-value.warn { color: var(--warn); }
+
+    /* ===== Main panel ===== */
+    .main-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px 22px;
+      box-shadow: 0 4px 18px rgba(100, 72, 30, 0.08);
+      min-height: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ===== 宿場絵エリア ===== */
+    .station-art-wrap {
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+    }
+
+    .station-art {
+      flex-shrink: 0;
+      width: 160px;
+      height: 120px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #f0e8d4;
+      position: relative;
+    }
+
+    .station-art img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .station-art canvas {
+      display: block;
+    }
+
+    .station-art-text {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    @media (max-width: 520px) {
+      .station-art-wrap { flex-direction: column; }
+      .station-art { width: 100%; height: 140px; }
+    }
+
+    .panel-location {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .panel-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.3;
+    }
+
+    .panel-body {
+      font-size: 0.97rem;
+      line-height: 1.85;
+      color: var(--text);
+      flex: 1;
+      white-space: pre-wrap;
+    }
+
+    /* ===== Laugh meter ===== */
+    .laugh-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .laugh-bar {
+      flex: 1;
+      height: 8px;
+      background: rgba(100,72,30,0.12);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .laugh-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #d97706, #f59e0b);
+      border-radius: 999px;
+      transition: width 0.35s ease, background 0.35s ease;
+    }
+    .laugh-fill.low  { background: linear-gradient(90deg, #be123c, #f43f5e); }
+    .laugh-fill.high { background: linear-gradient(90deg, #15803d, #4ade80); }
+
+    /* ===== Choices ===== */
+    .choices {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .choice-btn {
+      appearance: none;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255, 252, 244, 0.7);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 11px 16px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.14s, border-color 0.14s, transform 0.1s;
+      line-height: 1.45;
+    }
+
+    .choice-btn:hover:not(:disabled) {
+      background: rgba(255, 252, 244, 1);
+      border-color: var(--accent);
+      transform: translateX(3px);
+    }
+
+    .choice-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .choice-btn.primary {
+      background: linear-gradient(135deg, var(--accent), #a84310);
+      border-color: transparent;
+      color: #fff7ed;
+    }
+
+    .choice-btn.primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #a84310, var(--accent));
+    }
+
+    /* ===== Shop ===== */
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .shop-item {
+      background: rgba(255,252,244,0.7);
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .shop-item-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .shop-item-detail {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    .shop-item-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .shop-price {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .buy-btn {
+      appearance: none;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff7ed;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: background 0.14s;
+    }
+
+    .buy-btn:hover:not(:disabled) { background: #a84310; }
+    .buy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ===== Log ===== */
+    .log-section {
+      background: rgba(30, 16, 4, 0.88);
+      border: 1px solid #4a2e0a;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.82rem;
+      color: #c8a96e;
+      line-height: 1.7;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    .log-section::-webkit-scrollbar { width: 4px; }
+    .log-section::-webkit-scrollbar-track { background: transparent; }
+    .log-section::-webkit-scrollbar-thumb { background: rgba(200, 169, 110, 0.3); border-radius: 4px; }
+
+    .log-entry { display: block; }
+    .log-entry.good { color: #6ee7a0; }
+    .log-entry.bad { color: #fca5a5; }
+    .log-entry.warn { color: #fcd34d; }
+
+    /* ===== Game over / Clear screens ===== */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 12, 4, 0.82);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .overlay-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 32px 36px;
+      max-width: 480px;
+      width: 92vw;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+    }
+
+    .overlay-card h2 {
+      font-size: 1.8rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+
+    .overlay-card p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.75;
+      margin-bottom: 22px;
+    }
+
+    .overlay-card .big-emoji {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .shop-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-card">
+      <span class="big-emoji" id="overlay-emoji"></span>
+      <h2 id="overlay-title"></h2>
+      <p id="overlay-body"></p>
+      <button class="choice-btn primary" id="overlay-btn" style="width:100%;text-align:center;">もう一度旅に出る</button>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    // ===== 宿場データ（東海道五十三次＋日本橋・三条大橋）=====
+    // region: 当時の国名（旧国）
+    const STATIONS = [
+      { id: "nihonbashi",  name: "日本橋",   region: "武蔵国",  desc: "旅の始まり。いよいよ江戸を後にする時が来た。" },
+      { id: "shinagawa",   name: "品川",     region: "武蔵国",  desc: "東海道最初の宿場。海沿いの漁師町が続く。" },
+      { id: "kawasaki",    name: "川崎",     region: "武蔵国",  desc: "多摩川を渡った先の宿場。六郷の渡しが有名だ。" },
+      { id: "kanagawa",    name: "神奈川",   region: "武蔵国",  desc: "港町の賑わい。外国船が沖に浮かぶのが見える。" },
+      { id: "hodogaya",    name: "保土ヶ谷", region: "武蔵国",  desc: "相模国の入口。峠が近いので草鞋を確かめる。" },
+      { id: "totsuka",     name: "戸塚",     region: "相模国",  desc: "江戸から二日目の宿場。旅人で賑わう。" },
+      { id: "fujisawa",    name: "藤沢",     region: "相模国",  desc: "遊行寺の門前町。弥次さんは参拝を済ませた。" },
+      { id: "hiratsuka",   name: "平塚",     region: "相模国",  desc: "馬入川の渡しを越えてきた。相模の平野が広がる。" },
+      { id: "oiso",        name: "大磯",     region: "相模国",  desc: "化粧坂を登れば相模湾が一望できる。" },
+      { id: "odawara",     name: "小田原",   region: "相模国",  desc: "小田原城下の宿場。かまぼこが名物だ。" },
+      { id: "hakone",      name: "箱根",     region: "伊豆国",  desc: "難所の箱根。「入り鉄砲に出女」の関所を通る。" },
+      { id: "mishima",     name: "三島",     region: "伊豆国",  desc: "三嶋大社の門前町。富士山がよく見える。" },
+      { id: "numazu",      name: "沼津",     region: "駿河国",  desc: "駿河湾の港町。魚が新鮮で弥次さんは大喜び。" },
+      { id: "hara",        name: "原",       region: "駿河国",  desc: "富士山の裾野。晴れた日は絶景が広がる。" },
+      { id: "yoshiwara",   name: "吉原",     region: "駿河国",  desc: "富士山を右に見ながら進む。左富士が有名な地。" },
+      { id: "kambara",     name: "蒲原",     region: "駿河国",  desc: "薩埵峠を越えてきた。急坂に二人は汗だくだ。" },
+      { id: "yui",         name: "由比",     region: "駿河国",  desc: "駿河湾沿いの細い道。落ちたら海の中だ。" },
+      { id: "okitsu",      name: "興津",     region: "駿河国",  desc: "清見寺に立ち寄る旅人が多い。" },
+      { id: "ejiri",       name: "江尻",     region: "駿河国",  desc: "清水湊の町。港ではにぎやかに荷が揚げられている。" },
+      { id: "fuchu",       name: "府中",     region: "駿河国",  desc: "駿府ともいう。徳川家康ゆかりの地。" },
+      { id: "mariko",      name: "丸子",     region: "駿河国",  desc: "とろろ汁が名物。弥次喜多も一杯たぐる。" },
+      { id: "okabe",       name: "岡部",     region: "駿河国",  desc: "宇津ノ谷峠を越えてきた体に宿の飯が染みる。" },
+      { id: "fujieda",     name: "藤枝",     region: "遠江国",  desc: "志太の平野の宿場。田んぼが続く長閑な道。" },
+      { id: "shimada",     name: "島田",     region: "遠江国",  desc: "大井川の手前の宿場。川越し人足の声が遠くに聞こえる。" },
+      { id: "oigawa",      name: "大井川",   region: "遠江国",  desc: "川越しの難所。水量次第では足止めを食らう。" },
+      { id: "kanaya",      name: "金谷",     region: "遠江国",  desc: "大井川を渡り切った。金谷坂の石畳が足に響く。" },
+      { id: "nissaka",     name: "日坂",     region: "遠江国",  desc: "小夜の中山を越える難所。山賊が出るとの噂も。" },
+      { id: "kakegawa",    name: "掛川",     region: "遠江国",  desc: "掛川城下の宿場。遠江の中心地。" },
+      { id: "fukuroi",     name: "袋井",     region: "遠江国",  desc: "東海道のちょうど真ん中あたり。折り返し地点だ。" },
+      { id: "mitsuke",     name: "見附",     region: "遠江国",  desc: "天竜川の手前の宿場。川風が涼しい。" },
+      { id: "hamamatsu",   name: "浜松",     region: "遠江国",  desc: "遠州灘の風が強い。鰻が名物の土地。" },
+      { id: "maisaka",     name: "舞坂",     region: "遠江国",  desc: "浜名湖の東岸。これより今切の渡しに乗る。" },
+      { id: "arai",        name: "新居",     region: "遠江国",  desc: "浜名湖畔の関所。船で湖を渡ってきた。" },
+      { id: "shirasuka",   name: "白須賀",   region: "遠江国",  desc: "潮見坂を登ると遠州灘が広がる絶景だ。" },
+      { id: "futamata",    name: "二川",     region: "三河国",  desc: "三河国に入った。東海道随一の小さな宿場。" },
+      { id: "yoshida",     name: "吉田",     region: "三河国",  desc: "豊川の河口。吉田城の城下町で賑わっている。" },
+      { id: "goyu",        name: "御油",     region: "三河国",  desc: "赤坂の隣の宿場。松並木が美しい。" },
+      { id: "akasaka",     name: "赤坂",     region: "三河国",  desc: "御油から半里の近さ。旅籠が多い色町だ。" },
+      { id: "fujikawa",    name: "藤川",     region: "三河国",  desc: "矢作川の支流沿いの静かな宿場。" },
+      { id: "okazaki",     name: "岡崎",     region: "三河国",  desc: "家康公生誕の地、岡崎城下。矢作橋が名所。" },
+      { id: "chiryuu",     name: "知立",     region: "三河国",  desc: "池鯉鮒とも書く。馬市で有名な宿場。" },
+      { id: "narumi",      name: "鳴海",     region: "尾張国",  desc: "有松絞りの産地。土産物を見る目が眩む。" },
+      { id: "miya",        name: "宮",       region: "尾張国",  desc: "熱田神宮の門前。七里の渡しで桑名へ向かう。" },
+      { id: "kuwana",      name: "桑名",     region: "伊勢国",  desc: "七里の渡しで伊勢湾を渡ってきた。蛤が名物。" },
+      { id: "yokkaichi",   name: "四日市",   region: "伊勢国",  desc: "伊勢の玄関口。三滝川の清流が心地よい。" },
+      { id: "ishiyakushi", name: "石薬師",   region: "伊勢国",  desc: "鈴鹿山脈の麓。薬師寺に旅の安全を祈る。" },
+      { id: "shono",       name: "庄野",     region: "伊勢国",  desc: "白雨で有名な宿場。広重の絵を思い出す。" },
+      { id: "kameyama",    name: "亀山",     region: "伊勢国",  desc: "亀山城下の宿場。関宿が近い。" },
+      { id: "seki",        name: "関",       region: "伊勢国",  desc: "東の箱根、西の鈴鹿とも呼ばれる関の宿場。" },
+      { id: "sakanoshita", name: "坂下",     region: "伊勢国",  desc: "鈴鹿峠を越えてきた。急坂に膝が笑っている。" },
+      { id: "tsuchiyama",  name: "土山",     region: "近江国",  desc: "近江国に入った。鈴鹿川沿いの静かな宿場。" },
+      { id: "minakuchi",   name: "水口",     region: "近江国",  desc: "甲賀の里。忍者の噂が絶えない宿場だ。" },
+      { id: "ishibe",      name: "石部",     region: "近江国",  desc: "草津まであと一息。田んぼの中の街道が続く。" },
+      { id: "kusatsu",     name: "草津",     region: "近江国",  desc: "中山道との追分。もうすぐ京の都だ。" },
+      { id: "otsu",        name: "大津",     region: "近江国",  desc: "琵琶湖の南端。山を越えれば京の都が待っている。" },
+      { id: "kyoto",       name: "京都三条", region: "山城国",  desc: "東海道五十三次の終点。三条大橋に到着！" },
+    ];
+
+    const TOTAL_STATIONS = STATIONS.length;
+
+    // ===== イベントプール =====
+    const EVENTS = [
+      // 軽いトラブル
+      {
+        id: "wallet_drop", type: "trouble",
+        title: "財布を落とした！",
+        body: "弥次さんが宿の縁側で昼寝をしていると、喜多さんが血相を変えて飛び込んできた。\n「弥次さん、えらいこっちゃ！財布が見当たらん！」\n慌てて探すと、道端の泥の中に落ちていた。中身は半分ほど失っていた。",
+        choices: [
+          { label: "やれやれ、仕方ない", effect: { money: -30 }, laugh: 5 },
+        ],
+      },
+      {
+        id: "overeat", type: "trouble",
+        title: "食い過ぎた",
+        body: "名物料理があまりにも美味そうで、二人とも腹十二分まで食ってしまった。\n「弥次さん、腹が…」「喜多さん、わしもじゃ…」\n二人そろって腹を押さえて転がっていた。翌朝まで動けず、弁当も余分に消費した。",
+        choices: [
+          { label: "うめぇもんはしゃあない", effect: { bento: -2 }, laugh: 8 },
+        ],
+      },
+      {
+        id: "straw_sandal_break", type: "trouble",
+        title: "草鞋が切れた",
+        body: "歩いているうちに、喜多さんの草鞋がぷっつりと切れてしまった。\n「弥次さん、困りました、草鞋が…」\n裸足で歩くわけにもいかず、次の町まで弥次さんのを一緒に使う羽目になった。",
+        choices: [
+          { label: "しゃあない、二人で一足じゃ", effect: { zori: -2 }, laugh: 6 },
+        ],
+      },
+      {
+        id: "pickpocket", type: "trouble",
+        title: "すりに遭った",
+        body: "宿場の人混みで、気づいたら弥次さんの財布が消えていた。\n「喜多さん、すられた！」\nどこぞの掏摸の仕業か。懐がすっかり軽くなってしまった。",
+        choices: [
+          { label: "世の中物騒じゃのう", effect: { money: -50 }, laugh: 2 },
+        ],
+      },
+      {
+        id: "sick", type: "trouble",
+        title: "腹をこわした",
+        body: "昨日の宿で出た鮎が怪しかった。今朝から喜多さんが厠から出てこない。\n「弥次さん、もう死ぬかと思いました」\n薬を一服飲んで、なんとか旅を続ける。",
+        choices: [
+          { label: "薬を飲ませる", effect: { medicine: -1, zori: -1 }, laugh: 4, needMedicine: true },
+          { label: "休んで回復を待つ",  effect: { bento: -3 }, laugh: 2 },
+        ],
+      },
+      {
+        id: "drunk", type: "trouble",
+        title: "二日酔いで起きられぬ",
+        body: "昨夜の宴が過ぎた。弥次さんと喜多さん、二人とも枕から頭を上げられない。\n「弥次さん…頭がガンガンします」\n「わしも同じじゃ…もう酒は飲まん」\n昼近くまで宿に居座り、宿代が余計にかかった。",
+        choices: [
+          { label: "反省します（してない）", effect: { money: -20, bento: -1 }, laugh: 10 },
+        ],
+      },
+      {
+        id: "rain", type: "trouble",
+        title: "大雨で足止め",
+        body: "突然の大雨。道は川になり、先へ進めない。\n宿でじっと雨宿りをしていると、弁当が底をついてきた。\n二人は軒先で降りしきる雨を眺め、ため息をついた。",
+        choices: [
+          { label: "雨が上がるまで待つ", effect: { bento: -2, money: -10 }, laugh: 1 },
+        ],
+      },
+      // ラッキーイベント
+      {
+        id: "found_money", type: "lucky",
+        title: "道端に小判が！",
+        body: "なんと道の真ん中に小判が落ちていた！\n「弥次さん、これは天の恵みですよ！」\n「拾った者勝ちじゃ、いただきじゃ！」\n二人は大喜びで懐に入れた。",
+        choices: [
+          { label: "ありがたくいただく", effect: { money: +60 }, laugh: 12 },
+        ],
+      },
+      {
+        id: "kind_merchant", type: "lucky",
+        title: "旅人に親切な商人",
+        body: "宿場で声をかけてきた商人が、荷物を軽くしたいとのことで弁当を分けてくれた。\n「旅のお方、よろしければこれを」\nありがたく頂戴する。",
+        choices: [
+          { label: "かたじけない", effect: { bento: +3 }, laugh: 8 },
+        ],
+      },
+      {
+        id: "gamble_win", type: "lucky",
+        title: "賭けに勝った！",
+        body: "喜多さんが宿の賭場で調子に乗って大勝負。\n「弥次さん！大儲けしましたよ！」\n弥次さんは呆れ顔だが、懐が温かくなったので良しとした。",
+        choices: [
+          { label: "今日は運がいい", effect: { money: +80 }, laugh: 15 },
+        ],
+      },
+      {
+        id: "gamble_lose", type: "trouble",
+        title: "賭けに負けた…",
+        body: "喜多さんが宿の賭場で大勝負を挑んだが、見事に全額すった。\n「弥次さん…あの、少し貸してもらえませんか」\n弥次さんは頭を抱えた。",
+        choices: [
+          { label: "もう賭けるな（また賭ける）", effect: { money: -60 }, laugh: 8 },
+        ],
+      },
+      {
+        id: "festival", type: "lucky",
+        title: "宿場祭りに遭遇",
+        body: "ちょうど宿場祭りの日。神輿が練り歩き、屋台が並んでいる。\n弥次さんと喜多さんは祭りに混じって大いに楽しんだ。\n旅の疲れがどこかへ吹き飛んだ。",
+        choices: [
+          { label: "やんや、やんや！", effect: { bento: +1, medicine: +1 }, laugh: 20 },
+        ],
+      },
+      {
+        id: "hot_spring", type: "lucky",
+        title: "温泉を発見",
+        body: "道の脇に小さな温泉が湧いていた。旅人が数人、気持ちよさそうに浸かっている。\n「弥次さん、これは入らねばなりませぬ！」\n二人は草鞋を脱いで足湯を楽しんだ。足が軽くなった。",
+        choices: [
+          { label: "ああ極楽、極楽", effect: { zori: +2 }, laugh: 18 },
+        ],
+      },
+      {
+        id: "charity", type: "lucky",
+        title: "お遍路さんから施し",
+        body: "お遍路のお爺さんが「よい旅を」と薬を分けてくれた。\n「ありがたやありがたや」と弥次さんと喜多さんは手を合わせた。",
+        choices: [
+          { label: "南無阿弥陀仏", effect: { medicine: +2 }, laugh: 6 },
+        ],
+      },
+      // ドジイベント
+      {
+        id: "wrong_inn", type: "trouble",
+        title: "宿を間違えた",
+        body: "暗くなってから宿に入ったら、なんと高級旅籠だった。\n「一泊いかほど？」「はい、金一両でございます」\n「た、高い！」\n今更引き返せず、宿代を払った。",
+        choices: [
+          { label: "夜の宿は慎重に選ぼう", effect: { money: -45 }, laugh: 12 },
+        ],
+      },
+      {
+        id: "wrong_direction", type: "trouble",
+        title: "道を間違えた",
+        body: "喜多さんが案内役を買って出たが、気づいたら来た道を戻っていた。\n「喜多さん、あの山…さっきも見たような」\n「え、あれ？」\n半日分歩き損ねた上に草鞋を余分に消耗した。",
+        choices: [
+          { label: "喜多さんに道案内は頼まない", effect: { zori: -2, bento: -1 }, laugh: 15 },
+        ],
+      },
+      {
+        id: "lost_luggage", type: "trouble",
+        title: "荷物を忘れてきた",
+        body: "前の宿場を出てしばらく経ってから、弥次さんが青ざめた。\n「喜多さん、わしの大事な荷物が…宿に忘れてきた！」\nとりに戻る手間と費用がかかった。",
+        choices: [
+          { label: "戻って取ってくる", effect: { money: -25, zori: -1 }, laugh: 10 },
+        ],
+      },
+      {
+        id: "fake_medicine", type: "trouble",
+        title: "偽薬をつかまされた",
+        body: "行商人から「万病に効く妙薬」を買ったが、後で確かめたら水あめだった。\n「喜多さん、これ…ただの飴じゃないですか」\n「うまいですが…」\nお金を損した。",
+        choices: [
+          { label: "怪しい商人には気をつけよう", effect: { money: -30 }, laugh: 12 },
+        ],
+      },
+      {
+        id: "begging_monk", type: "trouble",
+        title: "托鉢僧に施しを求められた",
+        body: "托鉢の僧侶が二人の前に立ちはだかり、お布施を求めた。\n断ると縁起が悪いと脅かされる。弥次さんは渋々懐から出した。",
+        choices: [
+          { label: "仏の道じゃ、仕方ない", effect: { money: -15 }, laugh: 3 },
+          { label: "断って走って逃げる", effect: { zori: -1 }, laugh: 20 },
+        ],
+      },
+    ];
+
+    // ===== 宿場ごとの絵の特徴（Canvasプレースホルダー用）=====
+    // sky: 空の色, motif: 主要モチーフ, fg: 前景色
+    const STATION_ART_HINTS = {
+      nihonbashi:  { sky: ["#b8d4e8","#dce8f0"], motif: "bridge",   fg: "#5a3a10" },
+      shinagawa:   { sky: ["#b0cce0","#cce0ee"], motif: "sea",      fg: "#2a4a6a" },
+      kawasaki:    { sky: ["#c4d8e8","#dce8f2"], motif: "river",    fg: "#3a5a3a" },
+      kanagawa:    { sky: ["#9ab8d8","#c0d8ec"], motif: "sea",      fg: "#2a3a6a" },
+      hodogaya:    { sky: ["#c8d4c0","#dce8d4"], motif: "pine",     fg: "#2a4a1a" },
+      totsuka:     { sky: ["#c0d0e0","#dce8f0"], motif: "road",     fg: "#4a3a20" },
+      fujisawa:    { sky: ["#b8cce0","#d4e4f0"], motif: "temple",   fg: "#3a2a10" },
+      hiratsuka:   { sky: ["#bcd0e4","#d4e4f0"], motif: "river",    fg: "#4a3a20" },
+      oiso:        { sky: ["#a8c4dc","#c8dcec"], motif: "sea",      fg: "#2a3a5a" },
+      odawara:     { sky: ["#b4cce0","#cce0f0"], motif: "castle",   fg: "#3a2a10" },
+      hakone:      { sky: ["#9ab4cc","#b8cce0"], motif: "mountain", fg: "#1a2a3a" },
+      mishima:     { sky: ["#a4c0e0","#c4dcf0"], motif: "fuji",     fg: "#1a3050" },
+      numazu:      { sky: ["#90b8d4","#b4d0e8"], motif: "sea",      fg: "#1a3050" },
+      hara:        { sky: ["#8ab4d0","#aacce4"], motif: "fuji",     fg: "#1a2840" },
+      yoshiwara:   { sky: ["#8ab0cc","#aacce0"], motif: "fuji",     fg: "#1a2840" },
+      kambara:     { sky: ["#7aa0c0","#9ab8d8"], motif: "mountain", fg: "#1a2030" },
+      yui:         { sky: ["#7098bc","#90b4d4"], motif: "cliff",    fg: "#1a2030" },
+      okitsu:      { sky: ["#88a8cc","#a8c4e0"], motif: "temple",   fg: "#2a2010" },
+      ejiri:       { sky: ["#80a8c8","#a0c0dc"], motif: "fuji",     fg: "#1a2840" },
+      fuchu:       { sky: ["#a0b8d4","#c0d4e8"], motif: "castle",   fg: "#2a2010" },
+      mariko:      { sky: ["#a8c0d8","#c4d8ec"], motif: "road",     fg: "#3a3010" },
+      okabe:       { sky: ["#98b4cc","#b8d0e4"], motif: "mountain", fg: "#2a2010" },
+      fujieda:     { sky: ["#a4bccc","#c0d4e4"], motif: "field",    fg: "#3a4a20" },
+      shimada:     { sky: ["#9ab0c8","#b8ccdc"], motif: "river",    fg: "#2a3a20" },
+      oigawa:      { sky: ["#88a4c0","#a8c0d8"], motif: "river",    fg: "#2a3820" },
+      kanaya:      { sky: ["#90a8c4","#acc0d8"], motif: "road",     fg: "#3a2810" },
+      nissaka:     { sky: ["#7890a8","#98aec4"], motif: "mountain", fg: "#1a1808" },
+      kakegawa:    { sky: ["#9ab0c8","#b4cce0"], motif: "castle",   fg: "#2a2010" },
+      fukuroi:     { sky: ["#a0b8cc","#bcd0e4"], motif: "road",     fg: "#3a3010" },
+      mitsuke:     { sky: ["#98b0c8","#b4ccdc"], motif: "river",    fg: "#2a3010" },
+      hamamatsu:   { sky: ["#90acc4","#acc8dc"], motif: "castle",   fg: "#2a2010" },
+      maisaka:     { sky: ["#88a8c8","#a8c4dc"], motif: "lake",     fg: "#1a2840" },
+      arai:        { sky: ["#80a0c0","#a0bcdc"], motif: "lake",     fg: "#1a2840" },
+      shirasuka:   { sky: ["#78a0c0","#98bcd8"], motif: "sea",      fg: "#1a2840" },
+      futamata:    { sky: ["#90a8c4","#acc0d8"], motif: "road",     fg: "#3a2810" },
+      yoshida:     { sky: ["#98b0cc","#b4cce0"], motif: "castle",   fg: "#2a2010" },
+      goyu:        { sky: ["#a4b8cc","#c0d4e4"], motif: "pine",     fg: "#2a3a10" },
+      akasaka:     { sky: ["#a8bccc","#c4d4e4"], motif: "inn",      fg: "#3a2010" },
+      fujikawa:    { sky: ["#9cb4c8","#b8cce0"], motif: "river",    fg: "#2a3010" },
+      okazaki:     { sky: ["#a0b8cc","#bcd0e4"], motif: "castle",   fg: "#2a2010" },
+      chiryuu:     { sky: ["#a8bccc","#c4d4e4"], motif: "field",    fg: "#3a3810" },
+      narumi:      { sky: ["#a0b4c8","#bcccdc"], motif: "road",     fg: "#3a2810" },
+      miya:        { sky: ["#98b0c8","#b4ccdc"], motif: "shrine",   fg: "#2a1808" },
+      kuwana:      { sky: ["#88a8c8","#a8c4dc"], motif: "sea",      fg: "#1a2840" },
+      yokkaichi:   { sky: ["#90a8c4","#acc4d8"], motif: "river",    fg: "#2a2010" },
+      ishiyakushi: { sky: ["#98b0c8","#b4ccdc"], motif: "temple",   fg: "#2a1808" },
+      shono:       { sky: ["#607898","#8098b8"], motif: "rain",     fg: "#1a1828" },
+      kameyama:    { sky: ["#98acc4","#b4c4d8"], motif: "castle",   fg: "#2a2010" },
+      seki:        { sky: ["#90a8c0","#acc0d8"], motif: "inn",      fg: "#2a1808" },
+      sakanoshita: { sky: ["#7898b0","#98b4cc"], motif: "mountain", fg: "#1a1808" },
+      tsuchiyama:  { sky: ["#7898b0","#98b4c8"], motif: "rain",     fg: "#1a1828" },
+      minakuchi:   { sky: ["#90a8c4","#acc4d8"], motif: "road",     fg: "#2a3010" },
+      ishibe:      { sky: ["#98b0c8","#b4ccdc"], motif: "field",    fg: "#3a3810" },
+      kusatsu:     { sky: ["#a0b4c8","#bcccd8"], motif: "road",     fg: "#2a2810" },
+      otsu:        { sky: ["#88a8c8","#a8c4dc"], motif: "lake",     fg: "#1a2840" },
+      kyoto:       { sky: ["#c0b4a8","#dcd4c8"], motif: "temple",   fg: "#3a1808" },
+    };
+
+    function drawStationCanvas(canvas, stationId) {
+      const W = canvas.width  = 320;
+      const H = canvas.height = 240;
+      const ctx = canvas.getContext("2d");
+      const hint = STATION_ART_HINTS[stationId] || { sky: ["#b0c8e0","#d0e0f0"], motif: "road", fg: "#3a2a10" };
+
+      // 空のグラデーション
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+      skyGrad.addColorStop(0, hint.sky[0]);
+      skyGrad.addColorStop(1, hint.sky[1]);
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      // 地面
+      const groundGrad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+      groundGrad.addColorStop(0, "#c8b890");
+      groundGrad.addColorStop(1, "#a89468");
+      ctx.fillStyle = groundGrad;
+      ctx.fillRect(0, H * 0.55, W, H * 0.45);
+
+      // モチーフ別描画
+      ctx.fillStyle = hint.fg;
+      ctx.strokeStyle = hint.fg;
+
+      const m = hint.motif;
+
+      if (m === "fuji" || m === "mountain") {
+        // 山
+        const peakX = m === "fuji" ? W * 0.72 : W * 0.5;
+        const peakY = m === "fuji" ? H * 0.08 : H * 0.15;
+        ctx.beginPath();
+        ctx.moveTo(peakX - W * 0.38, H * 0.54);
+        ctx.lineTo(peakX, peakY);
+        ctx.lineTo(peakX + W * 0.38, H * 0.54);
+        ctx.closePath();
+        ctx.fillStyle = m === "fuji" ? "#e8e4e0" : "#8898a8";
+        ctx.fill();
+        if (m === "fuji") {
+          // 雪冠
+          ctx.beginPath();
+          ctx.moveTo(peakX - W * 0.08, peakY + H * 0.12);
+          ctx.lineTo(peakX, peakY);
+          ctx.lineTo(peakX + W * 0.08, peakY + H * 0.12);
+          ctx.closePath();
+          ctx.fillStyle = "#ffffff";
+          ctx.fill();
+        }
+      }
+
+      if (m === "sea" || m === "lake") {
+        // 水面（波紋）
+        ctx.fillStyle = m === "lake" ? "#6898b8" : "#4878a8";
+        ctx.fillRect(0, H * 0.42, W, H * 0.58);
+        ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        ctx.lineWidth = 1.5;
+        for (let y = H * 0.46; y < H; y += 12) {
+          ctx.beginPath();
+          for (let x = 0; x < W; x += 20) {
+            ctx.moveTo(x, y);
+            ctx.bezierCurveTo(x+5, y-4, x+15, y-4, x+20, y);
+          }
+          ctx.stroke();
+        }
+      }
+
+      if (m === "river") {
+        // 川
+        ctx.fillStyle = "#6890b8";
+        ctx.beginPath();
+        ctx.moveTo(W*0.1, H*0.54);
+        ctx.bezierCurveTo(W*0.3, H*0.52, W*0.5, H*0.56, W*0.9, H*0.54);
+        ctx.lineTo(W*0.9, H);
+        ctx.lineTo(W*0.1, H);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      if (m === "bridge") {
+        // 橋
+        ctx.strokeStyle = hint.fg;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(W*0.05, H*0.58);
+        ctx.lineTo(W*0.95, H*0.58);
+        ctx.stroke();
+        // 欄干
+        ctx.lineWidth = 2;
+        for (let x = W*0.1; x < W*0.9; x += W*0.12) {
+          ctx.beginPath();
+          ctx.moveTo(x, H*0.58);
+          ctx.lineTo(x, H*0.48);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.moveTo(W*0.05, H*0.48);
+        ctx.lineTo(W*0.95, H*0.48);
+        ctx.stroke();
+        // 川
+        ctx.fillStyle = "#6890b8";
+        ctx.fillRect(0, H*0.58, W, H*0.42);
+      }
+
+      if (m === "castle") {
+        // 城郭（シルエット）
+        ctx.fillStyle = hint.fg;
+        const bx = W*0.35, by = H*0.28;
+        ctx.fillRect(bx, by, W*0.3, H*0.27);
+        ctx.fillRect(bx+W*0.06, by-H*0.12, W*0.18, H*0.14);
+        ctx.fillRect(bx+W*0.1, by-H*0.22, W*0.1, H*0.12);
+        // 屋根
+        ctx.beginPath();
+        ctx.moveTo(bx+W*0.05, by-H*0.12);
+        ctx.lineTo(bx+W*0.15, by-H*0.18);
+        ctx.lineTo(bx+W*0.25, by-H*0.12);
+        ctx.fill();
+      }
+
+      if (m === "temple" || m === "shrine") {
+        // 社寺の屋根
+        ctx.fillStyle = hint.fg;
+        const tx = W*0.3, ty = H*0.28;
+        // 本体
+        ctx.fillRect(tx, ty+H*0.1, W*0.4, H*0.2);
+        // 屋根（反り）
+        ctx.beginPath();
+        ctx.moveTo(tx-W*0.06, ty+H*0.1);
+        ctx.bezierCurveTo(tx, ty-H*0.02, tx+W*0.2, ty-H*0.08, tx+W*0.2, ty-H*0.1);
+        ctx.bezierCurveTo(tx+W*0.2, ty-H*0.08, tx+W*0.4, ty-H*0.02, tx+W*0.46, ty+H*0.1);
+        ctx.closePath();
+        ctx.fill();
+        if (m === "shrine") {
+          // 鳥居
+          ctx.strokeStyle = "#b03010";
+          ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.moveTo(W*0.22, H*0.32); ctx.lineTo(W*0.22, H*0.54); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(W*0.28, H*0.32); ctx.lineTo(W*0.28, H*0.54); ctx.stroke();
+          ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.moveTo(W*0.19, H*0.36); ctx.lineTo(W*0.31, H*0.36); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(W*0.20, H*0.40); ctx.lineTo(W*0.30, H*0.40); ctx.stroke();
+        }
+      }
+
+      if (m === "pine") {
+        // 松並木
+        ctx.fillStyle = "#2a4a1a";
+        for (let i = 0; i < 5; i++) {
+          const px = W*(0.1 + i*0.2);
+          const ph = H*(0.15 + Math.random()*0.1);
+          // 幹
+          ctx.fillStyle = "#5a3a10";
+          ctx.fillRect(px-4, H*0.38, 8, H*0.17);
+          // 枝葉（三角積み）
+          ctx.fillStyle = "#2a4a1a";
+          ctx.beginPath(); ctx.moveTo(px, H*0.18+ph*0.1); ctx.lineTo(px-W*0.07, H*0.38); ctx.lineTo(px+W*0.07, H*0.38); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(px, H*0.12+ph*0.1); ctx.lineTo(px-W*0.055, H*0.30); ctx.lineTo(px+W*0.055, H*0.30); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(px, H*0.08+ph*0.1); ctx.lineTo(px-W*0.04, H*0.22); ctx.lineTo(px+W*0.04, H*0.22); ctx.fill();
+        }
+      }
+
+      if (m === "road") {
+        // 街道（一本道）
+        ctx.fillStyle = "#b8a070";
+        ctx.beginPath();
+        ctx.moveTo(W*0.38, H*0.54);
+        ctx.lineTo(W*0.45, H);
+        ctx.lineTo(W*0.55, H);
+        ctx.lineTo(W*0.62, H*0.54);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      if (m === "cliff") {
+        // 崖（由比・薩埵峠）
+        ctx.fillStyle = "#5a6878";
+        ctx.beginPath();
+        ctx.moveTo(0, H*0.54);
+        ctx.lineTo(W*0.5, H*0.2);
+        ctx.lineTo(W*0.5, H*0.54);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      if (m === "inn") {
+        // 旅籠
+        ctx.fillStyle = hint.fg;
+        ctx.fillRect(W*0.2, H*0.28, W*0.6, H*0.27);
+        // 格子窓
+        ctx.strokeStyle = "#f0e8d0";
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 3; i++) {
+          const wx = W*(0.27+i*0.17);
+          ctx.strokeRect(wx, H*0.34, W*0.1, H*0.1);
+          ctx.beginPath(); ctx.moveTo(wx+W*0.05, H*0.34); ctx.lineTo(wx+W*0.05, H*0.44); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(wx, H*0.39); ctx.lineTo(wx+W*0.1, H*0.39); ctx.stroke();
+        }
+        // 屋根
+        ctx.fillStyle = "#3a2010";
+        ctx.beginPath();
+        ctx.moveTo(W*0.15, H*0.28);
+        ctx.lineTo(W*0.5, H*0.12);
+        ctx.lineTo(W*0.85, H*0.28);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      if (m === "field") {
+        // 田畑
+        ctx.strokeStyle = "#6a8a4a";
+        ctx.lineWidth = 1;
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 6; c++) {
+            ctx.strokeRect(W*(0.05+c*0.15), H*(0.56+r*0.1), W*0.14, H*0.09);
+          }
+        }
+        // 水稲の色
+        ctx.fillStyle = "rgba(100,140,60,0.25)";
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 6; c++) {
+            ctx.fillRect(W*(0.05+c*0.15), H*(0.56+r*0.1), W*0.14, H*0.09);
+          }
+        }
+      }
+
+      if (m === "rain") {
+        // 雨（白い斜め線）
+        ctx.strokeStyle = "rgba(180,200,220,0.7)";
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 40; i++) {
+          const rx = Math.random() * W;
+          const ry = Math.random() * H;
+          ctx.beginPath();
+          ctx.moveTo(rx, ry);
+          ctx.lineTo(rx+6, ry+18);
+          ctx.stroke();
+        }
+      }
+
+      // 人物シルエット（弥次喜多）
+      const drawFigure = (x, y, scale) => {
+        ctx.fillStyle = "#1a0e04";
+        // 笠
+        ctx.beginPath();
+        ctx.ellipse(x, y-scale*22, scale*9, scale*4, 0, 0, Math.PI*2);
+        ctx.fill();
+        // 頭
+        ctx.beginPath();
+        ctx.arc(x, y-scale*16, scale*5, 0, Math.PI*2);
+        ctx.fill();
+        // 体（着物）
+        ctx.beginPath();
+        ctx.moveTo(x-scale*5, y-scale*11);
+        ctx.lineTo(x-scale*7, y+scale*2);
+        ctx.lineTo(x+scale*7, y+scale*2);
+        ctx.lineTo(x+scale*5, y-scale*11);
+        ctx.closePath();
+        ctx.fill();
+        // 杖
+        ctx.lineWidth = scale*1.5;
+        ctx.strokeStyle = "#1a0e04";
+        ctx.beginPath();
+        ctx.moveTo(x+scale*7, y-scale*8);
+        ctx.lineTo(x+scale*10, y+scale*4);
+        ctx.stroke();
+      };
+      drawFigure(W*0.38, H*0.7, 1.8);
+      drawFigure(W*0.52, H*0.7, 1.6);
+
+      // 宿場名オーバーレイ（右下）
+      ctx.font = "bold 13px 'Hiragino Sans','Yu Gothic UI',sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillStyle = "rgba(20,10,2,0.55)";
+      const st = STATIONS.find(s => s.id === stationId);
+      if (st) {
+        ctx.fillText(st.name, W-8, H-8);
+      }
+    }
+
+    // ===== 宿場絵を表示するDIVを返す =====
+    function makeStationArt(stationId) {
+      const wrap = el("div", "station-art");
+      const img = new Image();
+      img.src = `./assets/yajikita/${stationId}.png`;
+      img.onload = () => {
+        wrap.innerHTML = "";
+        wrap.appendChild(img);
+      };
+      img.onerror = () => {
+        // 画像がなければCanvasで描く
+        const canvas = document.createElement("canvas");
+        drawStationCanvas(canvas, stationId);
+        wrap.innerHTML = "";
+        wrap.appendChild(canvas);
+        canvas.style.width  = "100%";
+        canvas.style.height = "100%";
+      };
+      // 最初はCanvasを仮置き（画像読み込み中も絵が出るように）
+      const canvas = document.createElement("canvas");
+      drawStationCanvas(canvas, stationId);
+      wrap.appendChild(canvas);
+      canvas.style.width  = "100%";
+      canvas.style.height = "100%";
+      return wrap;
+    }
+
+    // ===== 宿場固有イベント =====
+    const STATION_EVENTS = {
+      "hakone": {
+        title: "箱根の関所",
+        body: "難所の箱根峠。関所では役人が厳しく改めを行う。\n「通行手形はあるか？」\n弥次さんと喜多さんは汗をかきながら手形を差し出した。\n\n関所を越えれば西国への道が開ける。",
+        choices: [
+          { label: "なんとか通過できた", effect: { zori: -1 }, laugh: 5 },
+        ],
+      },
+      "oigawa": {
+        title: "大井川の川越し",
+        body: "東海道随一の難所、大井川。橋がなく、川越し人足に頼むしかない。\n「今日は増水で川越し料が高くなっております」\n弥次さんは財布のひもを固く締めていたが、仕方なく払った。",
+        choices: [
+          { label: "川越し人足に頼む（高）", effect: { money: -40, zori: -1 }, laugh: 2 },
+          { label: "浅瀬を探して渡る",        effect: { zori: -2 },           laugh: 8 },
+        ],
+      },
+      "nihonbashi": {
+        title: "日本橋、旅立ち",
+        body: "「弥次さん、いよいよですね」\n「ああ、長年の夢じゃ。伊勢参りをしながら上方まで行くとしよう」\n弥次さんと喜多さんは晴れやかな顔で日本橋を渡った。\nさあ、東海道の旅が始まる！",
+        choices: [
+          { label: "出発じゃ！", effect: {}, laugh: 10 },
+        ],
+      },
+      "kyoto": {
+        title: "三条大橋に到着！",
+        body: "「弥次さん！見えてきましたよ、三条大橋が！」\n「おお…ついに来たか、京の都に！」\n二人は橋の上で立ち止まり、旅のあれこれを思い返した。\n\n喜んだり、泣いたり、笑ったり。波乱万丈の東海道旅だった。\nこれにて弥次喜多、道中記の幕！",
+        choices: [
+          { label: "いやはや、よい旅でした", effect: {}, laugh: 30 },
+        ],
+      },
+    };
+
+    // ===== ショップ品 =====
+    // 旅程54回分の消費（弁当54・草鞋54）を途中の買い物でまかなえる価格設定
+    const SHOP_ITEMS = [
+      { id: "bento",    name: "弁当",     icon: "🍱", desc: "食料 +5",        price: 40,  effect: { bento: +5 } },
+      { id: "zori",     name: "草鞋",     icon: "👡", desc: "草鞋 +5",        price: 35,  effect: { zori: +5 } },
+      { id: "medicine", name: "薬",       icon: "💊", desc: "薬 +2",          price: 60,  effect: { medicine: +2 } },
+      { id: "luxury",   name: "名物料理", icon: "🍶", desc: "弁当+3・笑い+15", price: 70,  effect: { bento: +3 }, laugh: 15 },
+    ];
+
+    // ===== ゲーム状態 =====
+    let state = null;
+
+    function initState() {
+      state = {
+        stationIndex: 0,
+        money: 1500,
+        bento: 10,
+        zori: 10,
+        medicine: 3,
+        laugh: 0,
+        log: [],
+        phase: "travel",   // travel | event | shop
+        currentEvent: null,
+        dayCount: 1,
+      };
+    }
+
+    function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+
+    function addLog(msg, type = "") {
+      state.log.unshift({ msg, type });
+      if (state.log.length > 40) state.log.pop();
+    }
+
+    // ===== ランダムイベント選択 =====
+    function pickRandomEvent() {
+      // 固有イベントが優先
+      const stationId = STATIONS[state.stationIndex].id;
+      if (STATION_EVENTS[stationId]) {
+        return { ...STATION_EVENTS[stationId], type: "station" };
+      }
+      // ランダム
+      const idx = Math.floor(Math.random() * EVENTS.length);
+      return EVENTS[idx];
+    }
+
+    // ===== エフェクト適用 =====
+    function applyEffect(effect, laughBonus = 0) {
+      if (effect.money)    { state.money    = clamp(state.money    + effect.money,    0, 9999); }
+      if (effect.bento)    { state.bento    = clamp(state.bento    + effect.bento,    0, 30);   }
+      if (effect.zori)     { state.zori     = clamp(state.zori     + effect.zori,     0, 30);   }
+      if (effect.medicine) { state.medicine = clamp(state.medicine + effect.medicine, 0, 20);   }
+      state.laugh = clamp(state.laugh + laughBonus, 0, 100);
+    }
+
+    // ===== 旅行コスト =====
+    // 笑いが低いと気力が落ちて消費増、高いと足取り軽く草鞋が長持ち
+    function travelCost() {
+      if (state.laugh < 30) return { bento: 2, zori: 2 };
+      if (state.laugh >= 60) return { bento: 1, zori: 0 };
+      return { bento: 1, zori: 1 };
+    }
+
+    // ===== ゲームオーバー判定 =====
+    function checkGameOver() {
+      if (state.money <= 0 && state.bento <= 0) {
+        return { reason: "路銀も弁当も尽き果てた。弥次さんと喜多さんは道端に座り込み、旅を諦めた。\n\n「喜多さん…江戸に帰るか」\n「そうですね…」" };
+      }
+      if (state.zori <= 0 && state.bento <= 0) {
+        return { reason: "草鞋も食料も底をついた。裸足で空腹では一歩も歩けない。\n\n「もう…動けませぬ、弥次さん」\n「わしもじゃ…」" };
+      }
+      return null;
+    }
+
+    // ===== レンダリング =====
+    function render() {
+      const app = document.getElementById("app");
+      app.innerHTML = "";
+
+      // ヘッダー
+      const header = el("div", "game-header");
+      header.innerHTML = `<h1>弥次喜多トレイル</h1><p>江戸・日本橋より京・三条大橋まで、笑いと涙の東海道五十三次</p>`;
+      app.appendChild(header);
+
+      // ルートバー
+      app.appendChild(renderRouteBar());
+
+      // ステータス
+      app.appendChild(renderStats());
+
+      // メインパネル
+      app.appendChild(renderMainPanel());
+
+      // ログ
+      app.appendChild(renderLog());
+    }
+
+    function renderRouteBar() {
+      const section = el("div", "route-section");
+
+      const cur = STATIONS[state.stationIndex];
+      const label = el("div", "route-label");
+      label.textContent = `第${state.dayCount}日目 ／ ${cur.region}・${cur.name}`;
+      section.appendChild(label);
+
+      // 国ごとにグループ化
+      const groups = [];
+      STATIONS.forEach((s, i) => {
+        const last = groups[groups.length - 1];
+        if (last && last.region === s.region) {
+          last.stations.push({ s, i });
+        } else {
+          groups.push({ region: s.region, stations: [{ s, i }] });
+        }
+      });
+
+      const bar = el("div", "route-regions");
+
+      groups.forEach(group => {
+        const indices = group.stations.map(g => g.i);
+        const hasCurrent = indices.includes(state.stationIndex);
+        const hasVisited = indices.some(i => i < state.stationIndex);
+
+        const block = el("div", "region-block");
+        if (hasCurrent) block.classList.add("has-current");
+        else if (hasVisited) block.classList.add("has-visited");
+
+        const regionLabel = el("div", "region-name");
+        regionLabel.textContent = group.region.replace("国", "");
+        block.appendChild(regionLabel);
+
+        const dots = el("div", "region-dots");
+        group.stations.forEach(({ s, i }) => {
+          const cell = el("div", "station-cell");
+          if (i < state.stationIndex) cell.classList.add("visited");
+          else if (i === state.stationIndex) cell.classList.add("current");
+
+          const dot = el("div", "station-dot");
+          if (i < state.stationIndex) dot.classList.add("visited");
+          else if (i === state.stationIndex) dot.classList.add("current");
+
+          const label = el("div", "station-label");
+          label.textContent = s.name;
+
+          cell.appendChild(dot);
+          cell.appendChild(label);
+          dots.appendChild(cell);
+        });
+        block.appendChild(dots);
+        bar.appendChild(block);
+      });
+
+      section.appendChild(bar);
+      return section;
+    }
+
+    function renderStats() {
+      const row = el("div", "stats-row");
+
+      const resources = [
+        { icon: "💰", label: "路銀（文）", value: state.money,    low: 30, warn: 80 },
+        { icon: "🍱", label: "弁当",       value: state.bento,    low: 2,  warn: 4  },
+        { icon: "👡", label: "草鞋",       value: state.zori,     low: 2,  warn: 4  },
+        { icon: "💊", label: "薬",         value: state.medicine, low: 0,  warn: 1  },
+      ];
+
+      resources.forEach(r => {
+        const card = el("div", "stat-card");
+        const icon = el("div", "stat-icon"); icon.textContent = r.icon;
+        const lbl  = el("div", "stat-label"); lbl.textContent = r.label;
+        const val  = el("div", "stat-value");
+        val.textContent = r.value;
+        if (r.value <= r.low)  val.classList.add("low");
+        else if (r.value <= r.warn) val.classList.add("warn");
+        card.appendChild(icon);
+        card.appendChild(lbl);
+        card.appendChild(val);
+        row.appendChild(card);
+      });
+
+      return row;
+    }
+
+    function renderMainPanel() {
+      const panel = el("div", "main-panel");
+
+      if (state.phase === "travel") {
+        renderTravelPhase(panel);
+      } else if (state.phase === "event") {
+        renderEventPhase(panel);
+      } else if (state.phase === "shop") {
+        renderShopPhase(panel);
+      }
+
+      // 笑いメーター
+      const laughClass = state.laugh < 30 ? "laugh-fill low" : state.laugh >= 60 ? "laugh-fill high" : "laugh-fill";
+      const laughNote  = state.laugh < 30
+        ? `<span style="color:#f43f5e;font-size:0.78rem;">⚠ 気力なし（移動コスト2倍）</span>`
+        : state.laugh >= 60
+        ? `<span style="color:#4ade80;font-size:0.78rem;">✨ 絶好調（草鞋消費なし）</span>`
+        : "";
+      const laughRow = el("div", "laugh-row");
+      laughRow.innerHTML = `<span>笑い</span><div class="laugh-bar"><div class="${laughClass}" style="width:${state.laugh}%"></div></div><span>${state.laugh}%</span>${laughNote}`;
+      panel.appendChild(laughRow);
+
+      return panel;
+    }
+
+    function renderTravelPhase(panel) {
+      const station = STATIONS[state.stationIndex];
+
+      const artWrap = el("div", "station-art-wrap");
+      artWrap.appendChild(makeStationArt(station.id));
+      const textCol = el("div", "station-art-text");
+
+      const loc = el("div", "panel-location");
+      loc.textContent = `現在地：${station.name}`;
+      textCol.appendChild(loc);
+
+      const title = el("div", "panel-title");
+      title.textContent = station.desc;
+      textCol.appendChild(title);
+
+      artWrap.appendChild(textCol);
+      panel.appendChild(artWrap);
+
+      const choices = el("div", "choices");
+
+      // 次の宿場へ進む
+      if (state.stationIndex < TOTAL_STATIONS - 1) {
+        const next = STATIONS[state.stationIndex + 1];
+        const cost = travelCost();
+        const btn = el("button", "choice-btn primary");
+        btn.textContent = `${next.name}へ向かう（弁当-${cost.bento}・草鞋-${cost.zori}）`;
+        btn.disabled = state.bento < cost.bento || state.zori < cost.zori;
+        btn.addEventListener("click", () => doTravel());
+        choices.appendChild(btn);
+      }
+
+      // 宿場で休む
+      const restBtn = el("button", "choice-btn");
+      restBtn.textContent = "宿場の宿に泊まる（路銀-15・弁当+1）";
+      restBtn.disabled = state.money < 15;
+      restBtn.addEventListener("click", () => doRest());
+      choices.appendChild(restBtn);
+
+      // 買い物
+      const shopBtn = el("button", "choice-btn");
+      shopBtn.textContent = "宿場の店で買い物をする";
+      shopBtn.addEventListener("click", () => { state.phase = "shop"; render(); });
+      choices.appendChild(shopBtn);
+
+      panel.appendChild(choices);
+    }
+
+    function renderEventPhase(panel) {
+      const ev = state.currentEvent;
+      const station = STATIONS[state.stationIndex];
+
+      const artWrap = el("div", "station-art-wrap");
+      artWrap.appendChild(makeStationArt(station.id));
+      const textCol = el("div", "station-art-text");
+
+      const loc = el("div", "panel-location");
+      loc.textContent = ev.type === "lucky" ? "✨ 幸運！" : ev.type === "station" ? `📍 ${station.name}` : "⚠ ハプニング！";
+      textCol.appendChild(loc);
+
+      const title = el("div", "panel-title");
+      title.textContent = ev.title;
+      textCol.appendChild(title);
+
+      const body = el("div", "panel-body");
+      body.textContent = ev.body;
+      textCol.appendChild(body);
+
+      artWrap.appendChild(textCol);
+      panel.appendChild(artWrap);
+
+      const choices = el("div", "choices");
+      ev.choices.forEach((c, i) => {
+        const btn = el("button", "choice-btn");
+        btn.textContent = c.label;
+        if (c.needMedicine && state.medicine < 1) btn.disabled = true;
+        btn.addEventListener("click", () => resolveEventChoice(c));
+        choices.appendChild(btn);
+      });
+      panel.appendChild(choices);
+    }
+
+    function renderShopPhase(panel) {
+      const loc = el("div", "panel-location");
+      loc.textContent = `${STATIONS[state.stationIndex].name} の店`;
+      panel.appendChild(loc);
+
+      const title = el("div", "panel-title");
+      title.textContent = "何を買いますか？";
+      panel.appendChild(title);
+
+      const grid = el("div", "shop-grid");
+      SHOP_ITEMS.forEach(item => {
+        const row = el("div", "shop-item");
+        const left = el("div", "");
+        const name = el("div", "shop-item-name");
+        name.textContent = `${item.icon} ${item.name}`;
+        const desc = el("div", "shop-item-detail");
+        desc.textContent = item.desc;
+        left.appendChild(name);
+        left.appendChild(desc);
+
+        const right = el("div", "shop-item-right");
+        const price = el("div", "shop-price");
+        price.textContent = `${item.price}文`;
+        const btn = el("button", "buy-btn");
+        btn.textContent = "買う";
+        btn.disabled = state.money < item.price;
+        btn.addEventListener("click", () => doBuy(item));
+        right.appendChild(price);
+        right.appendChild(btn);
+
+        row.appendChild(left);
+        row.appendChild(right);
+        grid.appendChild(row);
+      });
+      panel.appendChild(grid);
+
+      const back = el("button", "choice-btn");
+      back.textContent = "店を出る";
+      back.style.marginTop = "8px";
+      back.addEventListener("click", () => { state.phase = "travel"; render(); });
+      panel.appendChild(back);
+    }
+
+    function renderLog() {
+      const section = el("div", "log-section");
+      state.log.forEach(entry => {
+        const span = el("span", `log-entry${entry.type ? " " + entry.type : ""}`);
+        span.textContent = entry.msg;
+        section.appendChild(span);
+        section.appendChild(document.createTextNode("\n"));
+      });
+      return section;
+    }
+
+    // ===== アクション =====
+    function doTravel() {
+      const cost = travelCost();
+      state.bento = clamp(state.bento - cost.bento, 0, 30);
+      state.zori  = clamp(state.zori  - cost.zori,  0, 30);
+      state.stationIndex++;
+      state.dayCount++;
+
+      const station = STATIONS[state.stationIndex];
+      addLog(`► ${station.name}に到着した。`, "good");
+
+      // ゲームオーバーチェック
+      const over = checkGameOver();
+      if (over) { showGameOver(over.reason); return; }
+
+      // 京都到着でクリア
+      if (station.id === "kyoto") {
+        state.phase = "event";
+        state.currentEvent = STATION_EVENTS["kyoto"];
+        render();
+        return;
+      }
+
+      // 宿場到着後はイベント発生、解決後にtravelフェーズ（買い物・休息）へ戻る
+      state.currentEvent = pickRandomEvent();
+      state.phase = "event";
+      render();
+    }
+
+    function doRest() {
+      state.money = clamp(state.money - 15, 0, 9999);
+      state.bento = clamp(state.bento + 1, 0, 30);
+      state.dayCount++;
+      addLog("宿で一晩ゆっくり休んだ。飯がうまかった。", "good");
+      const over = checkGameOver();
+      if (over) { showGameOver(over.reason); return; }
+      render();
+    }
+
+    function doBuy(item) {
+      state.money = clamp(state.money - item.price, 0, 9999);
+      applyEffect(item.effect, item.laugh || 0);
+      addLog(`「${item.name}」を${item.price}文で買った。`, "good");
+      render();
+    }
+
+    function resolveEventChoice(choice) {
+      applyEffect(choice.effect || {}, choice.laugh || 0);
+
+      // ログメッセージ
+      const effects = choice.effect || {};
+      const parts = [];
+      if (effects.money)    parts.push(`路銀 ${effects.money > 0 ? "+" : ""}${effects.money}文`);
+      if (effects.bento)    parts.push(`弁当 ${effects.bento > 0 ? "+" : ""}${effects.bento}`);
+      if (effects.zori)     parts.push(`草鞋 ${effects.zori > 0 ? "+" : ""}${effects.zori}`);
+      if (effects.medicine) parts.push(`薬 ${effects.medicine > 0 ? "+" : ""}${effects.medicine}`);
+
+      const isGood = Object.values(effects).some(v => v > 0);
+      const logType = isGood ? "good" : (Object.values(effects).some(v => v < 0) ? "bad" : "");
+      addLog(`[${state.currentEvent.title}] ${parts.join(" / ") || "変化なし"}`, logType);
+
+      const over = checkGameOver();
+      if (over) { showGameOver(over.reason); return; }
+
+      // 京都クリア
+      if (STATIONS[state.stationIndex].id === "kyoto") {
+        showClear();
+        return;
+      }
+
+      state.phase = "travel";
+      state.currentEvent = null;
+      render();
+    }
+
+    // ===== ゲームオーバー / クリア =====
+    function showGameOver(reason) {
+      document.getElementById("overlay-emoji").textContent = "😭";
+      document.getElementById("overlay-title").textContent = "旅の途中で万事休す";
+      document.getElementById("overlay-body").textContent =
+        reason + `\n\n笑い：${state.laugh}% ／ ${STATIONS[state.stationIndex].name}まで到達`;
+      document.getElementById("overlay").classList.add("show");
+    }
+
+    function showClear() {
+      document.getElementById("overlay-emoji").textContent = "🎉";
+      document.getElementById("overlay-title").textContent = "三条大橋に到着！";
+      document.getElementById("overlay-body").textContent =
+        `弥次さんと喜多さん、無事に京都まで辿り着いた！\n\n笑い：${state.laugh}% ／ 旅日数：${state.dayCount}日\n残り路銀：${state.money}文`;
+      document.getElementById("overlay").classList.add("show");
+    }
+
+    // ===== ユーティリティ =====
+    function el(tag, className) {
+      const e = document.createElement(tag);
+      if (className) e.className = className;
+      return e;
+    }
+
+    // ===== 初期化 =====
+    document.getElementById("overlay-btn").addEventListener("click", () => {
+      document.getElementById("overlay").classList.remove("show");
+      initState();
+      render();
+    });
+
+    initState();
+    // 最初のイベントを日本橋固有イベントに
+    state.currentEvent = STATION_EVENTS["nihonbashi"];
+    state.phase = "event";
+    render();
+  })();
+  </script>
+</body>
+</html>

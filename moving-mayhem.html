@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>崩して運ぶ引っ越しゲーム</title>
+  <style>
+    :root {
+      --bg: #f3efe4;
+      --panel: rgba(255, 252, 246, 0.9);
+      --line: rgba(74, 60, 44, 0.15);
+      --text: #2f2419;
+      --muted: #6f6254;
+      --accent: #b45309;
+      --accent-2: #0f766e;
+      --danger: #b91c1c;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(249, 216, 165, 0.65), transparent 32%),
+        linear-gradient(160deg, #f8f2e6, #eadfcd);
+      color: var(--text);
+      font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    .hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: grid;
+      grid-template-columns: minmax(260px, 360px) minmax(220px, 280px);
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 18px 40px rgba(74, 60, 44, 0.14);
+      backdrop-filter: blur(10px);
+      pointer-events: auto;
+    }
+
+    .status {
+      padding: 16px 18px;
+    }
+
+    .title {
+      margin: 0 0 4px;
+      font-size: clamp(1.15rem, 2.6vw, 1.6rem);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      margin: 0 0 14px;
+      font-size: 0.93rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stat {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(74, 60, 44, 0.09);
+    }
+
+    .label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .value {
+      display: block;
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .goalbar {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.08);
+      margin-bottom: 8px;
+    }
+
+    .goalbar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #f59e0b);
+      transition: width 0.18s ease;
+    }
+
+    .message {
+      min-height: 1.4em;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--accent-2);
+    }
+
+    .help {
+      padding: 14px 16px;
+    }
+
+    .help h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .help p {
+      margin: 0 0 10px;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .controls {
+      display: grid;
+      gap: 6px;
+      font-size: 0.86rem;
+      color: var(--text);
+    }
+
+    .controls strong {
+      color: var(--accent);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      pointer-events: auto;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 0.86rem;
+      font-weight: 800;
+      color: white;
+      background: linear-gradient(135deg, var(--accent), #ea580c);
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+    }
+
+    .banner {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      width: min(92vw, 540px);
+      padding: 16px 18px;
+      border-radius: 20px;
+      background: rgba(47, 36, 25, 0.88);
+      color: #fff7ed;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 22px 40px rgba(0, 0, 0, 0.24);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 11;
+    }
+
+    .banner.show {
+      opacity: 1;
+    }
+
+    .banner-title {
+      margin: 0 0 4px;
+      font-size: 1.02rem;
+      font-weight: 900;
+    }
+
+    .banner-text {
+      margin: 0;
+      color: rgba(255, 247, 237, 0.88);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .hud {
+        grid-template-columns: 1fr;
+      }
+
+      .help {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <section class="panel status">
+      <h1 class="title">崩して運ぶ引っ越しゲーム</h1>
+      <p class="subtitle">鉄球で家具をぶつけて荷台へ押し込め。壊さず運ぶと高得点、粉砕すると小口配送になる。</p>
+      <div class="stats">
+        <div class="stat">
+          <span class="label">スコア</span>
+          <span class="value" id="score">0</span>
+        </div>
+        <div class="stat">
+          <span class="label">残り時間</span>
+          <span class="value" id="time">75.0</span>
+        </div>
+        <div class="stat">
+          <span class="label">配送済み</span>
+          <span class="value" id="delivered">0 / 7</span>
+        </div>
+      </div>
+      <div class="goalbar"><div class="goalbar-fill" id="goal-fill"></div></div>
+      <div class="message" id="message">5個以上を荷台に入れればクリア。</div>
+      <div class="actions">
+        <button id="restart-button">リスタート</button>
+        <button class="secondary" id="camera-button">カメラ切替</button>
+      </div>
+    </section>
+    <aside class="panel help">
+      <h2>操作</h2>
+      <p>トラック荷台は右側。家具をぶつけて滑らせ、荷台の柵の中へ止めると回収されます。</p>
+      <div class="controls">
+        <div><strong>WASD / 矢印</strong> 鉄球を移動</div>
+        <div><strong>Shift</strong> ブースト</div>
+        <div><strong>R</strong> リスタート</div>
+        <div><strong>C</strong> カメラ切替</div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="banner" id="banner">
+    <p class="banner-title" id="banner-title"></p>
+    <p class="banner-text" id="banner-text"></p>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="./moving-mayhem.js"></script>
+</body>
+</html>

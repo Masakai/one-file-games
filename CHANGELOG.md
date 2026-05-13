@@ -1,5 +1,16 @@
 # Changelog
 
+## [v1.3.0] - 2026-05-14
+
+### Added
+- `yajikita-trail.html` に笑いパラメータのゲーム影響を実装（笑い低→移動コスト2倍、笑い高→草鞋消費なし）。
+- `moving-mayhem.html` / `moving-mayhem.js` を追加し、物理演算を使った引っ越しゲームをブラウザで遊べるようにした。
+- `index.html` に Moving Mayhem と弥次喜多トレイルへの導線を追加。
+
+### Changed
+- `yajikita-trail.html` のタイトルを「弥次喜多道中記」→「弥次喜多トレイル」に変更。
+- `index.html` のゲームカード名を「弥次喜多トレイル」に変更。
+
 ## [v1.2.0] - 2026-04-19
 
 ### Added
@@ -52,5 +63,6 @@
 ### Changed
 - Super Star Trek のUIをプレイしやすいレイアウトへ調整（COMMAND/COMPUTER/GUIDE 構成）。
 
+[v1.3.0]: https://github.com/Masakai/one-file-games/compare/v1.2.0...v1.3.0
 [v1.2.0]: https://github.com/Masakai/one-file-games/compare/v1.1.0...v1.2.0
 [v1.1.0]: https://github.com/Masakai/one-file-games/compare/v1.0.2...v1.1.0
